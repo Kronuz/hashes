@@ -115,11 +115,18 @@ static void test_string_switch() {
 	assert(classify("delete") == 3);
 	assert(classify("patch") == 0);
 
-	// The _fnv1a UDL is a compile-time constant. Note it is declared to return
-	// uint32_t while hashing with fnv1ah64, so it carries the *low 32 bits* of the
-	// 64-bit FNV-1a (a quirk inherited verbatim from Xapiand's hashes.hh).
-	static_assert("get"_fnv1a == static_cast<std::uint32_t>(fnv1ah64::hash("get", 3)),
-	              "_fnv1a UDL == low 32 bits of fnv1a64 of same bytes");
+	// The _fnv1a UDL is a compile-time constant and must agree exactly with
+	// fnv1ah32 of the same bytes, so _fnv1a case labels can be mixed with the
+	// fnv1ah32-hashed switch value above. (Previously it hashed with fnv1ah64 and
+	// narrowed to 32 bits, silently disagreeing with fnv1ah32 -- a footgun fixed.)
+	static_assert("get"_fnv1a == fnv1ah32::hash("get"),
+	              "_fnv1a UDL == fnv1ah32 of same bytes");
+	static_assert("put"_fnv1a == fnv1ah32::hash("put"),
+	              "_fnv1a UDL == fnv1ah32 of same bytes");
+	static_assert("delete"_fnv1a == fnv1ah32::hash("delete"),
+	              "_fnv1a UDL == fnv1ah32 of same bytes");
+	static_assert("get"_fnv1a == fnv1ah32::hash("get", 3),
+	              "_fnv1a UDL matches the const char*+len form too");
 	constexpr std::uint32_t g = "get"_fnv1a;
 	static_assert(g != 0, "_fnv1a UDL produced a constant");
 

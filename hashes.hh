@@ -186,7 +186,7 @@ public:
 	}
 
 	template <typename S, typename = std::enable_if_t<std::is_same<std::string, std::decay_t<S>>::value or std::is_same<std::string_view, std::decay_t<S>>::value>>
-	static std::uint64_t hash(S&& str, std::uint64_t seed = 0) {
+	static std::uint32_t hash(S&& str, std::uint32_t seed = 0) {
 		return XXH32(str.data(), str.size(), seed);
 	}
 
@@ -267,7 +267,7 @@ using fnv1ah64 = fnv1ah<std::uint64_t, 0x100000001b3ULL, 14695981039346656037ULL
 using fnv1ah32ci = fnv1ah<std::uint32_t, 0x1000193UL, 2166136261UL, case_insensitive>;
 
 constexpr std::uint32_t operator"" _fnv1a(const char* s, size_t size) {
-	return fnv1ah64::hash(s, size);
+	return fnv1ah32::hash(s, size);
 }
 
 
