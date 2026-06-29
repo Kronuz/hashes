@@ -47,4 +47,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   add_executable(hashes_test test/test.cc)
   target_link_libraries(hashes_test PRIVATE hashes)
   add_test(NAME hashes COMMAND hashes_test)
+
+  # A runnable tour of the library (not a test): build & run ./build/hashes_demo.
+  # Links the same `hashes` target as the test, so static_string.hh / chars.hh
+  # resolve and the constexpr hash families are on the include path.
+  add_executable(hashes_demo examples/demo.cc)
+  target_link_libraries(hashes_demo PRIVATE hashes)
 endif()

@@ -119,6 +119,27 @@ against known vectors, hashing a `static_string` argument, the integer `mixer` a
 `jump_consistent_hash`, and the `_fnv1a`/`_xx` UDL string switch. It prints
 `all hashes tests passed` and exits 0.
 
+## Examples
+
+[`examples/demo.cc`](examples/demo.cc) is a runnable tour. A top-level CMake build
+produces it next to the test:
+
+```sh
+cmake -B build && cmake --build build && ./build/hashes_demo
+```
+
+It opens with a `static_assert` that the FNV-1a of `"GET"` is a compile-time
+constant (if it weren't, the program wouldn't build), then hashes the same bytes
+*at runtime* and shows the two agree. That agreement is the whole point: it makes
+the headline use case sound, a `switch` over a runtime string whose `case` labels
+are compile-time hashes, dispatching HTTP methods without a single string compare.
+From there it runs one word through every family at every width (FNV-1a 16/32/64,
+the case-insensitive `fnv1ah32ci` folding `"HASHING"` to match `"hashing"`, djb2,
+and the `constexpr` xxHash-64), shows the integer `mixer` scattering adjacent
+inputs, and watches `jump_consistent_hash` place one key across growing bucket
+counts plus the string overload that skips `/`. Every value is printed labelled as
+`string -> hash`.
+
 ## Provenance
 
 Extracted from [Xapiand](https://github.com/Kronuz/Xapiand). The standalone delta
