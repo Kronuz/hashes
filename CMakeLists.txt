@@ -12,12 +12,12 @@ include(FetchContent)
 FetchContent_Declare(
   static_string
   GIT_REPOSITORY https://github.com/Kronuz/static-string.git
-  GIT_TAG        43a2e67a31a10031eb9e0d8bef61c8b6c14cd958
+  GIT_TAG        main
 )
 FetchContent_Declare(
   char_classify
   GIT_REPOSITORY https://github.com/Kronuz/char-classify.git
-  GIT_TAG        8094f0f1e209cd5ca1c4b6ce9a788139f77cdf8e
+  GIT_TAG        main
 )
 FetchContent_MakeAvailable(static_string char_classify)
 

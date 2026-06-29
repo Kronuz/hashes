@@ -201,7 +201,7 @@ public:
 };
 #endif
 
-constexpr std::uint64_t operator"" _xx(const char* s, size_t size) {
+constexpr std::uint64_t operator""_xx(const char* s, size_t size) {
 	return xxh64::hash(s, size);
 }
 
@@ -266,7 +266,7 @@ using fnv1ah64 = fnv1ah<std::uint64_t, 0x100000001b3ULL, 14695981039346656037ULL
 // using fnv1ah128 = fnv1ah<__uint128_t, 0x10000000000000000000159ULLL, 275519064689413815358837431229664493455ULLL>;  // too big for compiler
 using fnv1ah32ci = fnv1ah<std::uint32_t, 0x1000193UL, 2166136261UL, case_insensitive>;
 
-constexpr std::uint32_t operator"" _fnv1a(const char* s, size_t size) {
+constexpr std::uint32_t operator""_fnv1a(const char* s, size_t size) {
 	return fnv1ah32::hash(s, size);
 }
 
