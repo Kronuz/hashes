@@ -1,5 +1,7 @@
 # hashes
 
+![constexpr](https://img.shields.io/badge/constexpr-compile--time-blue)
+
 A small, header-only **compile-time hashing** library for C++20, extracted from
 [Xapiand](https://github.com/Kronuz/Xapiand).
 
