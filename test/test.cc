@@ -47,6 +47,21 @@ static void test_hash_values() {
 	static_assert(xxh64::hash("abc", 3) == xxh64::hash("abc", 3), "xxh64 is deterministic");
 	static_assert(xxh64::hash("abc", 3) != xxh64::hash("abd", 3), "xxh64 distinguishes content");
 
+	// wordwise: deterministic, content- and length-sensitive, constexpr, and its
+	// string_view overload agrees with the pointer+len core.
+	static_assert(wordwise::hash("abc", 3) == wordwise::hash("abc", 3), "wordwise is deterministic");
+	static_assert(wordwise::hash("abc", 3) != wordwise::hash("abd", 3), "wordwise distinguishes content");
+	static_assert(wordwise::hash("abc", 3) != wordwise::hash("abcd", 4), "wordwise distinguishes length");
+	static_assert(wordwise::hash(std::string_view("a longer keyword than one word")) ==
+	                  wordwise::hash("a longer keyword than one word", 30),
+	              "wordwise string_view == pointer+len");
+
+	// fnv1ah64ci folds case like fnv1ah32ci, at 64 bits.
+	static_assert(fnv1ah64ci::hash("ABC", 3) == fnv1ah64::hash("abc", 3),
+	              "fnv1a64ci is case-insensitive");
+	static_assert(fnv1ah64::hash("ABC", 3) != fnv1ah64::hash("abc", 3),
+	              "fnv1a64 (case-sensitive) distinguishes case");
+
 	// xxh64 also works at runtime over a string_view (no xxHash backend needed:
 	// the constexpr path is the fallback when STRING_KIT_HAS_XXHASH is 0).
 	std::string abc = "abc";

@@ -8,7 +8,8 @@ A small, header-only **compile-time hashing** library for C++20, extracted from
 ## What it is
 
 One header, `hashes.hh`: `constexpr` hash functions (FNV-1a, djb2, a `constexpr`
-xxHash-64, integer mixers, jump-consistent hashing) plus `_fnv1a` / `_xx`
+xxHash-64, `wordwise` a word-at-a-time 64-bit hash, integer mixers,
+jump-consistent hashing) plus `_fnv1a` / `_xx`
 user-defined literals, so you can write a hash-based `switch` over strings whose
 case labels are computed at compile time. The hash families take `const char*`
 + len, string literals, `static_string`, and `std::string` / `std::string_view`
@@ -80,7 +81,8 @@ constexpr std::uint64_t k = "hello"_xx;          // constexpr xxHash-64
 constexpr std::uint32_t g = "get"_fnv1a;         // FNV-1a UDL (see note below)
 ```
 
-`fnv1ah16/32/64`, `fnv1ah32ci` (case-insensitive), `djb2h8/16/32/64`, and the
+`fnv1ah16/32/64`, `fnv1ah32ci`/`fnv1ah64ci` (case-insensitive), `djb2h8/16/32/64`,
+`wordwise`, and the
 `constexpr` `xxh64` all expose a uniform `hash(...)` over `const char*`+len,
 string literals, `static_string`, and `std::string`/`std::string_view`. `mixer`
 hashes integers; `jump_consistent_hash` buckets a key into `[0, num_buckets)`.
