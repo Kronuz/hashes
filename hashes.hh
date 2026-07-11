@@ -511,10 +511,14 @@ struct mixer {
 };
 
 
-//
+// Dispatch hash macros. hh/hhl hash a string to an integer for perfect-hash dispatch;
+// fhh/fhhl are the find(hash(...)) shorthand; hmix/fhmix are the integer-key variants.
+// hh/hhl use the word-at-a-time wordwise hashes (64-bit): bench/dispatch.cc shows them
+// fastest for dispatch on real key sets, on both x86_64 and arm64. Being 64-bit, a value
+// held in a variable must be `auto`/`uint64_t`, not `uint32_t` (which would truncate).
 
-#define hh(s) fnv1ah32::hash(s)
-#define hhl(s) fnv1ah32ci::hash(s)
+#define hh(s) wordwise::hash(s)
+#define hhl(s) wordwise_ci::hash(s)
 #define fhh(s) find(hh(s))
 #define fhhl(s) find(hhl(s))
 #define hmix(n) mixer::mix(n)
