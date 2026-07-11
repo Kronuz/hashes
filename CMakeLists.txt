@@ -53,4 +53,17 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   # resolve and the constexpr hash families are on the include path.
   add_executable(hashes_demo examples/demo.cc)
   target_link_libraries(hashes_demo PRIVATE hashes)
+
+  # Benchmark (not a test): which hash to pick for perfect-hash string dispatch, on real
+  # key sets. Pulls the constexpr-phf engine as a bench-only contender; constexpr-phf is
+  # integer-only and does not depend on hashes, so this is a clean one-way bench dependency.
+  FetchContent_Declare(constexpr_phf
+    GIT_REPOSITORY https://github.com/Kronuz/constexpr-phf.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE)
+  FetchContent_MakeAvailable(constexpr_phf)
+  add_executable(hashes_bench_dispatch bench/dispatch.cc)
+  target_link_libraries(hashes_bench_dispatch PRIVATE hashes constexpr_phf)
+  target_include_directories(hashes_bench_dispatch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/bench)
+  target_compile_options(hashes_bench_dispatch PRIVATE -O3)
 endif()
