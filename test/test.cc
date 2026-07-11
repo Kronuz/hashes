@@ -62,6 +62,26 @@ static void test_hash_values() {
 	static_assert(fnv1ah64::hash("ABC", 3) != fnv1ah64::hash("abc", 3),
 	              "fnv1a64 (case-sensitive) distinguishes case");
 
+	// wordwise_ci folds case (short via the tail, long via the SWAR word path), stays
+	// content/length-sensitive, and its SWAR fold agrees with chars::tolower on every byte.
+	static_assert(wordwise_ci::hash("ABC", 3) == wordwise_ci::hash("abc", 3),
+	              "wordwise_ci is case-insensitive (short)");
+	static_assert(wordwise_ci::hash("A LONGER KEYWORD, MIXED", 23) ==
+	                  wordwise_ci::hash("a longer keyword, mixed", 23),
+	              "wordwise_ci is case-insensitive (long, crosses the word path)");
+	static_assert(wordwise_ci::hash("abc", 3) != wordwise_ci::hash("abd", 3),
+	              "wordwise_ci distinguishes content");
+	// The SWAR word-path fold must equal a byte-wise chars::tolower for every byte value:
+	// hash an 8-byte word of byte i and compare to the same word pre-lowered.
+	for (int i = 0; i < 256; ++i) {
+		char raw[8], low[8];
+		for (int k = 0; k < 8; ++k) {
+			raw[k] = static_cast<char>(i);
+			low[k] = chars::tolower(static_cast<char>(i));
+		}
+		assert(wordwise_ci::hash(raw, 8) == wordwise_ci::hash(low, 8));
+	}
+
 	// xxh64 also works at runtime over a string_view (no xxHash backend needed:
 	// the constexpr path is the fallback when STRING_KIT_HAS_XXHASH is 0).
 	std::string abc = "abc";

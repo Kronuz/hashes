@@ -263,6 +263,73 @@ public:
 };
 
 
+// Case-insensitive wordwise (ASCII). Folds A-Z to a-z before mixing, so long
+// case-insensitive keys get the same near-flat cost as wordwise (a byte-at-a-time
+// case-insensitive FNV scales with length). The fold is a branch-free SWAR mask over each
+// eight-byte word, identical to chars::tolower (which is ASCII-only); the tail folds through
+// chars::tolower. Fully constexpr. Self-consistent (build and lookup fold the same way), so
+// "DAY" and "day" hash equal.
+class wordwise_ci {
+	static constexpr std::uint64_t P = 0x9e3779b97f4a7c15ULL;
+
+	// Lowercase all eight ASCII bytes of a word at once: set a 0x20 bit exactly where a byte
+	// is 'A'..'Z'. (b + 0x3f) has bit 7 set iff b >= 'A'; (b + 0x25) has it iff b > 'Z'.
+	static constexpr std::uint64_t swar_tolower(std::uint64_t v) {
+		std::uint64_t ge_A = v + 0x3f3f3f3f3f3f3f3fULL;
+		std::uint64_t gt_Z = v + 0x2525252525252525ULL;
+		std::uint64_t is_upper = ge_A & ~gt_Z & 0x8080808080808080ULL;
+		return v | (is_upper >> 2);
+	}
+
+public:
+	using key_type = std::uint64_t;
+
+	constexpr static std::uint64_t hash(const char* p, std::size_t len) {
+		std::uint64_t h = 0x100000001b3ULL ^ (static_cast<std::uint64_t>(len) * P);
+		std::size_t i = 0;
+		while (i + 8 <= len) {
+			std::uint64_t w = 0;
+			for (int k = 0; k < 8; ++k) {
+				w |= static_cast<std::uint64_t>(static_cast<unsigned char>(p[i + k])) << (8 * k);
+			}
+			w = swar_tolower(w);
+			h ^= w;
+			h *= P;
+			h ^= h >> 29;
+			i += 8;
+		}
+		std::uint64_t tail = 0;
+		int shift = 0;
+		for (; i < len; ++i, shift += 8) {
+			tail |= static_cast<std::uint64_t>(static_cast<unsigned char>(chars::tolower(p[i]))) << shift;
+		}
+		h ^= tail;
+		h *= P;
+		h ^= h >> 32;
+		return h;
+	}
+
+	template <std::size_t N>
+	constexpr static std::uint64_t hash(const char(&&s)[N]) {
+		return hash(s, N - 1);
+	}
+
+	template <std::size_t SN, typename ST>
+	constexpr static std::uint64_t hash(const static_string::static_string<SN, ST>& str) {
+		return hash(str.data(), str.size());
+	}
+
+	constexpr static std::uint64_t hash(std::string_view str) {
+		return hash(str.data(), str.size());
+	}
+
+	template <typename... Args>
+	constexpr auto operator()(Args&&... args) const {
+		return hash(std::forward<Args>(args)...);
+	}
+};
+
+
 struct case_sensitive {
 	constexpr static char op(char c) {
 		return c;
