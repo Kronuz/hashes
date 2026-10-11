@@ -21,6 +21,23 @@ case-insensitive FNV) and `static_string.hh` (so the hash families accept a
 Nothing else enters except the C++ standard library and one opt-in exception
 (xxHash, below).
 
+## CRC-32C
+
+`crc32c.hh` stands alone. The reflected Castagnoli polynomial (`0x82f63b78`) drives
+three paths:
+
+1. **Hardware.** `_mm_crc32_u64` on x86-64 or `__crc32cd` on AArch64, in functions
+   compiled with the target attribute, so the library needs no global `-msse4.2`.
+   Detection runs once (`__builtin_cpu_supports`, `getauxval(AT_HWCAP)`).
+2. **Three lanes.** The CRC instruction has 3-cycle latency and 1-cycle throughput,
+   so one dependent chain uses a third of the unit. Buffers are split into 3 × 1 KiB
+   lanes computed together; lane states merge with `multiply(state, x^(8·bytes))`
+   modulo the polynomial, with the two shift factors computed at compile time.
+3. **Table.** Slice-by-8 for CPUs without the instruction and for constant
+   evaluation.
+
+`crc32c_combine` uses the same shift arithmetic to join two CRCs from their lengths.
+
 ## The hash families
 
 A set of hash families, each a template parameterized on the key type and the

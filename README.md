@@ -23,6 +23,37 @@ used by the case-insensitive FNV) — pulled in by `FetchContent` at pinned SHAs
 The single *optional* dependency is the runtime xxHash fast path (see below); the
 default build doesn't need it.
 
+A second header, `crc32c.hh`, has no dependencies: CRC-32C (Castagnoli), the
+checksum of iSCSI and ext4, for integrity checks on stored and transmitted data.
+
+## CRC-32C
+
+```cpp
+#include "crc32c.hh"
+
+std::uint32_t c = hashes::crc32c(data, size);            // one shot
+hashes::Crc32c crc;                                      // incremental
+crc.update(header, header_size).update(body, body_size);
+static_assert(hashes::crc32c("123456789") == 0xe3069283);  // constexpr
+auto both = hashes::crc32c_combine(crc_a, crc_b, size_b);  // CRC of A‖B without rereading
+```
+
+At runtime it uses the CPU's CRC-32C instruction (SSE4.2 on x86-64, the ARMv8 CRC
+extension on AArch64), detected once, and falls back to a slice-by-8 table.
+Buffers of 3 KiB and more run three interleaved instruction streams, which hides
+the instruction's latency, and merge them with precomputed shift constants.
+
+Throughput on an Intel i9-9980HK (macOS, Apple clang, `-O2`; measured while the
+host ran other builds, so treat the numbers as indicative):
+
+| Bytes | Hardware | Slice-by-8 | Byte table |
+|---:|---:|---:|---:|
+| 64 | 14.3 GB/s | 3.0 GB/s | 0.60 GB/s |
+| 4,096 | 16.7 GB/s | 2.1 GB/s | 0.49 GB/s |
+| 1 MiB | 19.3 GB/s | 2.1 GB/s | 0.49 GB/s |
+
+`bench/crc32c.cc` reproduces the table.
+
 ## Install
 
 CMake with `FetchContent`:

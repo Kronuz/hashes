@@ -9,7 +9,10 @@ easy to fall into.
 
 ```
 hashes.hh                    constexpr FNV-1a, djb2, xxHash-64, mixer, jump_consistent_hash + _fnv1a/_xx UDLs. Header.
+crc32c.hh                    CRC-32C: hardware (SSE4.2, ARMv8 CRC) with runtime detection, slice-by-8 fallback, constexpr, combine. No dependencies.
 test/test.cc                 Runnable smoke test: hash values, static_string hashing, mixer/jump, _fnv1a/_xx string switch.
+test/crc32c_test.cc          CRC-32C vectors, hardware vs table at every length and alignment, incremental, combine.
+bench/crc32c.cc              CRC-32C throughput: hardware vs slice-by-8 vs byte table.
 CMakeLists.txt               INTERFACE library `hashes` (+ alias hashes::hashes); FetchContents static-string + char-classify; CTest test `hashes`.
 LICENSE                      MIT, Copyright (c) 2015-2019 Dubalu LLC (+ Daniel Kirchner, in the header).
 README.md                    What it is, install, usage, the optional xxHash seam.
