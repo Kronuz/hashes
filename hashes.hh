@@ -51,10 +51,20 @@
 #  endif
 #endif
 #if STRING_KIT_HAS_XXHASH
+// Header-only (inline) xxHash, so a header found on the include path never needs
+// libxxhash at link time; inline mode gives the functions internal linkage.
+#  if !defined(XXH_INLINE_ALL)
+#    define XXH_INLINE_ALL
+#    define HASHES_DEFINED_XXH_INLINE_ALL
+#  endif
 #  if __has_include("xxhash.h")
 #    include "xxhash.h"
 #  else
 #    include <xxhash.h>
+#  endif
+#  if defined(HASHES_DEFINED_XXH_INLINE_ALL)
+#    undef XXH_INLINE_ALL
+#    undef HASHES_DEFINED_XXH_INLINE_ALL
 #  endif
 #endif
 

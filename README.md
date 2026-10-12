@@ -137,7 +137,8 @@ The header auto-detects this via `__has_include("xxhash.h")` / `<xxhash.h>`:
   is simply not defined. No third-party dependency enters.
 - **xxHash present:** `xxh64`'s runtime string overloads call `XXH64()` and the
   `xxh32` class is defined over `XXH32()`. This is the path Xapiand uses, where an
-  xxHash header rides in with LZ4.
+  xxHash header rides in with LZ4. The header is included in xxHash's inline mode
+  (`XXH_INLINE_ALL`), so no xxHash library is needed at link time.
 
 Force the choice with `-DSTRING_KIT_HAS_XXHASH=1` or `=0` if you don't want the
 auto-detection.
