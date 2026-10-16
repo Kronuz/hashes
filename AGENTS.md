@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Working notes for agents modifying this repository. For the design read
-`ARCHITECTURE.md`; for usage read `README.md`. This file covers the repo layout,
+`ARCHITECTURE.md`; for usage read `README.md` and `docs/API.md`. This file covers the repo layout,
 how to build and test, the invariants you must not break, and the traps that are
 easy to fall into.
 
@@ -15,7 +15,10 @@ test/crc32c_test.cc          CRC-32C vectors, hardware vs table at every length 
 bench/crc32c.cc              CRC-32C throughput: hardware vs slice-by-8 vs byte table.
 CMakeLists.txt               INTERFACE library `hashes` (+ alias hashes::hashes); FetchContents static-string + char-classify; CTest test `hashes`.
 LICENSE                      MIT, Copyright (c) 2015-2019 Dubalu LLC (+ Daniel Kirchner, in the header).
-README.md                    What it is, install, usage, the optional xxHash seam.
+README.md                    What it is, install, quick start.
+docs/API.md                  The families, string switches, the literals, the xxHash seam, CRC-32C.
+docs/BENCHMARKS.md           CRC-32C throughput and the dispatch benchmark.
+docs/hashes.d2               The README diagram's source (docs/hashes.svg is rendered from it).
 ARCHITECTURE.md              Internal design of each hash family, the xxHash seam, trade-offs.
 ```
 

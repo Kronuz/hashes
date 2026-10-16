@@ -1,7 +1,7 @@
 # Architecture
 
 The internal design of `hashes`: a single header of `constexpr` hash families and
-UDLs, built on two sibling libraries. For usage see `README.md`; for the repo map
+UDLs, built on two sibling libraries. For usage see `README.md` and `docs/API.md`; for the repo map
 and invariants see `AGENTS.md`.
 
 ## Shape

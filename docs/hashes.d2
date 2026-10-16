@@ -1,0 +1,28 @@
+# hashes: one hash(...) over every string form, at compile time or runtime.
+# Render: d2 --layout elk --sketch --theme 302 docs/hashes.d2 docs/hashes.svg
+direction: right
+
+inputs: inputs {
+  label: "const char* + len · \"literal\"\nstatic_string · std::string_view"
+}
+
+families: hash families {
+  label: "fnv1ah16/32/64 (+ci) · djb2h\nxxh64 · wordwise (+ci)\nmixer · jump_consistent_hash"
+}
+
+compile: "compile time" {
+  label: "case labels\n\"get\"_fnv1a · \"hello\"_xx"
+}
+
+run: runtime {
+  label: "hash(s) at runtime\nsame value"
+}
+
+crc: crc32c.hh {
+  label: "crc32c.hh\nSSE4.2 · ARMv8 CRC\nslice-by-8 fallback"
+}
+
+inputs -> families
+families -> compile
+families -> run
+compile -> run: "switch matches" {style.stroke-dash: 3}

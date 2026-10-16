@@ -1,220 +1,107 @@
 # hashes
 
 [![CI](https://github.com/Kronuz/hashes/actions/workflows/ci.yml/badge.svg)](https://github.com/Kronuz/hashes/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
+![Header-only](https://img.shields.io/badge/header--only-yes-green.svg)
 
-![constexpr](https://img.shields.io/badge/constexpr-compile--time-blue)
+`constexpr` string hashing for C++20, so a `switch` over a runtime string can use
+compile-time `case` labels, plus a hardware-accelerated CRC-32C. For dispatch on
+keywords and commands without string compares, and for integrity checks.
 
-A small, header-only **compile-time hashing** library for C++20, extracted from
-[Xapiand](https://github.com/Kronuz/Xapiand).
+![hashes: one hash(...) over every string form, the same value at compile time and at runtime](docs/hashes.svg)
 
-## What it is
+## ✨ Highlights
 
-One header, `hashes.hh`: `constexpr` hash functions (FNV-1a, djb2, a `constexpr`
-xxHash-64, `wordwise` a word-at-a-time 64-bit hash, integer mixers,
-jump-consistent hashing) plus `_fnv1a` / `_xx`
-user-defined literals, so you can write a hash-based `switch` over strings whose
-case labels are computed at compile time. The hash families take `const char*`
-+ len, string literals, `static_string`, and `std::string` / `std::string_view`
-through one uniform `hash(...)`.
+- **String switches.** Hash at compile time for the `case` labels and at runtime
+  for the input; the values match.
+- **Many families, one interface.** FNV-1a (16, 32, 64, case-insensitive), djb2,
+  a `constexpr` xxHash-64, and `wordwise`, a word-at-a-time hash that wins string
+  dispatch on every real key set measured.
+- **Every string form.** `const char*` and length, literals, `static_string`,
+  `std::string`, `std::string_view`.
+- **Integer tools.** `mixer` scrambles integers; `jump_consistent_hash` buckets
+  keys.
+- **CRC-32C at 14–19 GB/s** using SSE4.2 or the ARMv8 CRC extension, with a
+  slice-by-8 fallback and `crc32c_combine` (`crc32c.hh`, no dependencies).
+- **xxHash optional.** A runtime xxHash fast path switches on when `xxhash.h` is
+  on the include path.
 
-It builds on two already-extracted standalone libraries —
-[`static-string`](https://github.com/Kronuz/static-string) (so the hash families
-accept a `static_string` argument) and
-[`char-classify`](https://github.com/Kronuz/char-classify) (for `chars::tolower`,
-used by the case-insensitive FNV) — pulled in by `FetchContent` at pinned SHAs.
-The single *optional* dependency is the runtime xxHash fast path (see below); the
-default build doesn't need it.
+## 📦 Installation
 
-A second header, `crc32c.hh`, has no dependencies: CRC-32C (Castagnoli), the
-checksum of iSCSI and ext4, for integrity checks on stored and transmitted data.
-
-## CRC-32C
-
-```cpp
-#include "crc32c.hh"
-
-std::uint32_t c = hashes::crc32c(data, size);            // one shot
-hashes::Crc32c crc;                                      // incremental
-crc.update(header, header_size).update(body, body_size);
-static_assert(hashes::crc32c("123456789") == 0xe3069283);  // constexpr
-auto both = hashes::crc32c_combine(crc_a, crc_b, size_b);  // CRC of A‖B without rereading
-```
-
-At runtime it uses the CPU's CRC-32C instruction (SSE4.2 on x86-64, the ARMv8 CRC
-extension on AArch64), detected once, and falls back to a slice-by-8 table.
-Buffers of 3 KiB and more run three interleaved instruction streams, which hides
-the instruction's latency, and merge them with precomputed shift constants.
-
-Throughput on an Intel i9-9980HK (macOS, Apple clang, `-O2`; measured while the
-host ran other builds, so treat the numbers as indicative):
-
-| Bytes | Hardware | Slice-by-8 | Byte table |
-|---:|---:|---:|---:|
-| 64 | 14.3 GB/s | 3.0 GB/s | 0.60 GB/s |
-| 4,096 | 16.7 GB/s | 2.1 GB/s | 0.49 GB/s |
-| 1 MiB | 19.3 GB/s | 2.1 GB/s | 0.49 GB/s |
-
-`bench/crc32c.cc` reproduces the table.
-
-## Install
-
-CMake with `FetchContent`:
+Requires a C++20 compiler and CMake 3.14 or newer. It fetches
+[static-string](https://github.com/Kronuz/static-string) and
+[char-classify](https://github.com/Kronuz/char-classify) at pinned commits. CI
+builds it on Linux (x86_64, arm64), macOS (arm64, x86_64), and FreeBSD, plus ASan,
+UBSan, and TSan builds.
 
 ```cmake
 include(FetchContent)
-FetchContent_Declare(
-  hashes
+FetchContent_Declare(hashes
   GIT_REPOSITORY https://github.com/Kronuz/hashes.git
-  GIT_TAG        main
-)
+  GIT_TAG        main)
 FetchContent_MakeAvailable(hashes)
 
-target_link_libraries(your_target PRIVATE hashes::hashes)
+target_link_libraries(my_app PRIVATE hashes::hashes)
 ```
 
-`hashes` itself `FetchContent`s its two dependencies —
-[`static-string`](https://github.com/Kronuz/static-string) and
-[`char-classify`](https://github.com/Kronuz/char-classify) — at the exact SHAs it
-was extracted against, so you get the whole stack from one `FetchContent_Declare`.
-The `hashes` target is a pure `INTERFACE` library: it compiles nothing, requests
-`cxx_std_20`, and puts all three headers (`hashes.hh`, `static_string.hh`,
-`chars.hh`) on your include path. Then:
-
-```cpp
-#include "hashes.hh"  // xxh64, fnv1ah*, djb2h*, mixer, jump_consistent_hash, _fnv1a, _xx
-```
-
-Requires C++20. On macOS it builds with AppleClang/libc++, the same toolchain
-Xapiand uses. The header keeps its original filename, so a codebase that already
-`#include "hashes.hh"` just needs this repo on its include path.
-
-If you already pull `static-string` and `char-classify` into your own build via
-`FetchContent`, declare them (and `hashes`) so the names dedup — CMake's
-`FetchContent` uses the first declaration of each name, so declare them at the SHAs
-you want and `hashes` will reuse them rather than fetching its pinned copies.
-
-## Usage
-
-### Compile-time hashing and string switches
+## 🚀 Quick start
 
 ```cpp
 #include "hashes.hh"
+#include "crc32c.hh"
 
-// Hash a runtime string, dispatch on compile-time case labels:
-int classify(std::string_view s) {
-    switch (fnv1ah32::hash(s)) {
-        case fnv1ah32::hash("get", 3):    return 1;
-        case fnv1ah32::hash("put", 3):    return 2;
-        case fnv1ah32::hash("delete", 6): return 3;
-        default:                          return 0;
-    }
+#include <string_view>
+
+int method(std::string_view s) {
+	switch (fnv1ah32::hash(s)) {
+		case fnv1ah32::hash("GET"):    return 1;   // compile-time labels
+		case fnv1ah32::hash("PUT"):    return 2;
+		case fnv1ah32::hash("DELETE"): return 3;
+		default:                       return 0;
+	}
 }
 
-constexpr std::uint64_t k = "hello"_xx;          // constexpr xxHash-64
-constexpr std::uint32_t g = "get"_fnv1a;         // FNV-1a UDL (see note below)
+static_assert(hashes::crc32c("123456789") == 0xe3069283);   // constexpr, too
 ```
 
-`fnv1ah16/32/64`, `fnv1ah32ci`/`fnv1ah64ci` (case-insensitive), `djb2h8/16/32/64`,
-`wordwise`, and the
-`constexpr` `xxh64` all expose a uniform `hash(...)` over `const char*`+len,
-string literals, `static_string`, and `std::string`/`std::string_view`. `mixer`
-hashes integers; `jump_consistent_hash` buckets a key into `[0, num_buckets)`.
+[`examples/demo.cc`](examples/demo.cc) runs one word through every family and
+shows `jump_consistent_hash` placing a key as buckets grow.
 
-The `_fnv1a` UDL is declared `uint32_t` while hashing with `fnv1ah64`, so it
-carries the *low 32 bits* of the 64-bit FNV-1a — a quirk preserved verbatim from
-Xapiand. Call sites may depend on the value, so it isn't "fixed."
+## 🎯 When to use it
 
-## The optional xxHash seam
+- ✅ Dispatch on a fixed set of strings, alone or in front of
+  [constexpr-phf](https://github.com/Kronuz/constexpr-phf) for a dense jump table.
+- ✅ Checksums on stored or transmitted data (CRC-32C).
+- ❌ Passwords, signatures, or anything adversarial: none of these hashes is
+  cryptographic.
 
-`hashes.hh` ships a fully self-contained `constexpr` xxHash-64
-(`xxh64::hash(p, len)` and the `_xx` UDL) that needs nothing external. Separately,
-it offers *runtime* fast paths — `xxh64::hash(std::string_view)` and the whole
-`xxh32` class — that hand off to xxHash's `XXH64()` / `XXH32()` when an xxHash
-implementation is on your include path.
+## 📚 Documentation
 
-The header auto-detects this via `__has_include("xxhash.h")` / `<xxhash.h>`:
+- [docs/API.md](docs/API.md): the families, the string switch, the literals and
+  their quirks, the xxHash seam, and CRC-32C.
+- [docs/BENCHMARKS.md](docs/BENCHMARKS.md): CRC-32C throughput, and which hash
+  wins string dispatch.
+- [ARCHITECTURE.md](ARCHITECTURE.md): how the families and the CRC paths are
+  built.
+- [AGENTS.md](AGENTS.md): repository map, invariants, and traps.
 
-- **No xxHash present (the default):** the runtime `xxh64` string overload falls
-  back to the `constexpr` code; `xxh32` (which has no `constexpr` implementation)
-  is simply not defined. No third-party dependency enters.
-- **xxHash present:** `xxh64`'s runtime string overloads call `XXH64()` and the
-  `xxh32` class is defined over `XXH32()`. This is the path Xapiand uses, where an
-  xxHash header rides in with LZ4. The header is included in xxHash's inline mode
-  (`XXH_INLINE_ALL`), so no xxHash library is needed at link time.
-
-Force the choice with `-DSTRING_KIT_HAS_XXHASH=1` or `=0` if you don't want the
-auto-detection.
-
-## Build & test
+## 🛠️ Building and testing
 
 ```sh
 cmake -B build && cmake --build build && ctest --test-dir build
+./build/hashes_demo
 ```
 
-The first `cmake -B build` clones `static-string` and `char-classify` from GitHub
-at the pinned SHAs in `CMakeLists.txt`. The test checks FNV/djb2/xxh64 values
-against known vectors, hashing a `static_string` argument, the integer `mixer` and
-`jump_consistent_hash`, and the `_fnv1a`/`_xx` UDL string switch. It prints
-`all hashes tests passed` and exits 0.
+## 🤝 Contributing
 
-## Benchmark: which hash for dispatch
+Issues and pull requests are welcome. Hash values are part of the API (call sites
+store them), so a change must keep every existing value; read
+[AGENTS.md](AGENTS.md) first. CI must pass on every platform.
 
-`bench/dispatch.cc` answers a practical question: which hash to pick when you use one for
-perfect-hash string dispatch (hash a name, look it up in a
-[constexpr-phf](https://github.com/Kronuz/constexpr-phf) for a dense `switch` slot). It times
-each family on real key sets, both the raw hash and the full dispatch. The word-at-a-time
-`wordwise` / `wordwise_ci` win on every real set, on both x86_64 and arm64 (x86_64 dispatch
-ns/op shown):
+## 📄 License
 
-| set | 32-bit FNV | wordwise |
-| :-- | ---: | ---: |
-| reserved names (cs, ~10 chars) | 9.2 | 6.1 |
-| field-type names (cs, 2..23) | 13.9 | 7.9 |
-| serialiser type names (ci, short) | 19.6 | 15.7 |
-
-Byte-at-a-time FNV walks one character per step; `wordwise` reads eight, so it pulls ahead as
-keys lengthen, and `wordwise_ci` folds case eight bytes at a time (SWAR) where FNV's ci path
-does a per-byte table lookup.
-
-```sh
-cmake --build build --target hashes_bench_dispatch && ./build/hashes_bench_dispatch
-```
-
-The benchmark pulls `constexpr-phf` as a bench-only contender; the library itself has no such
-dependency.
-
-## Examples
-
-[`examples/demo.cc`](examples/demo.cc) is a runnable tour. A top-level CMake build
-produces it next to the test:
-
-```sh
-cmake -B build && cmake --build build && ./build/hashes_demo
-```
-
-It opens with a `static_assert` that the FNV-1a of `"GET"` is a compile-time
-constant (if it weren't, the program wouldn't build), then hashes the same bytes
-*at runtime* and shows the two agree. That agreement is the whole point: it makes
-the headline use case sound, a `switch` over a runtime string whose `case` labels
-are compile-time hashes, dispatching HTTP methods without a single string compare.
-From there it runs one word through every family at every width (FNV-1a 16/32/64,
-the case-insensitive `fnv1ah32ci` folding `"HASHING"` to match `"hashing"`, djb2,
-and the `constexpr` xxHash-64), shows the integer `mixer` scattering adjacent
-inputs, and watches `jump_consistent_hash` place one key across growing bucket
-counts plus the string overload that skips `/`. Every value is printed labelled as
-`string -> hash`.
-
-## Provenance
-
-Extracted from [Xapiand](https://github.com/Kronuz/Xapiand). The standalone delta
-is pure decoupling: `hashes.hh` made its `#include "xxhash.h"` optional behind
-`STRING_KIT_HAS_XXHASH` / `__has_include`, so the library carries no hard
-third-party dependency, and routes its `static_string` and `chars::tolower` needs
-through the two sibling libraries instead of Xapiand's in-tree headers. The hashing
-logic is otherwise identical. See [ARCHITECTURE.md](ARCHITECTURE.md) for the design
-and [AGENTS.md](AGENTS.md) for the repo map and invariants.
-
-## License
-
-MIT, Copyright (c) 2015-2019 Dubalu LLC. `hashes.hh` carries portions
-Copyright (c) 2015 Daniel Kirchner. See [LICENSE](LICENSE) and the per-file header.
+MIT. `hashes.hh` is Copyright (c) 2015-2019 Dubalu LLC, with portions Copyright
+(c) 2015 Daniel Kirchner; `crc32c.hh` is Copyright (c) 2026 Germán Méndez Bravo.
+See [LICENSE](LICENSE) and each file's header. Extracted from
+[Xapiand](https://github.com/Kronuz/Xapiand).
