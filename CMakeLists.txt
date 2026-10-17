@@ -64,7 +64,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   # integer-only and does not depend on hashes, so this is a clean one-way bench dependency.
   FetchContent_Declare(constexpr_phf
     GIT_REPOSITORY https://github.com/Kronuz/constexpr-phf.git
-    GIT_TAG        2a9cbff853385515822143dc7b1761c0ccb7d030)
+    GIT_TAG        1a035230c03982a822637f7c741656bd688bd9e3)
   FetchContent_MakeAvailable(constexpr_phf)
   add_executable(hashes_bench_dispatch bench/dispatch.cc)
   target_link_libraries(hashes_bench_dispatch PRIVATE hashes constexpr_phf)
