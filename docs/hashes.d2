@@ -18,10 +18,6 @@ run: runtime {
   label: "hash(s) at runtime\nsame value"
 }
 
-crc: crc32c.hh {
-  label: "crc32c.hh\nSSE4.2 · ARMv8 CRC\nslice-by-8 fallback"
-}
-
 inputs -> families
 families -> compile
 families -> run

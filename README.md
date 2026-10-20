@@ -6,8 +6,8 @@
 ![Header-only](https://img.shields.io/badge/header--only-yes-green.svg)
 
 `constexpr` string hashing for C++20, so a `switch` over a runtime string can use
-compile-time `case` labels, plus a hardware-accelerated CRC-32C. For dispatch on
-keywords and commands without string compares, and for integrity checks.
+compile-time `case` labels. For dispatch on keywords and commands without string
+compares. (CRC-32C moved to [crc32c](https://github.com/Kronuz/crc32c).)
 
 ![hashes: one hash(...) over every string form, the same value at compile time and at runtime](docs/hashes.svg)
 
@@ -22,8 +22,6 @@ keywords and commands without string compares, and for integrity checks.
   `std::string`, `std::string_view`.
 - **Integer tools.** `mixer` scrambles integers; `jump_consistent_hash` buckets
   keys.
-- **CRC-32C at 14–19 GB/s** using SSE4.2 or the ARMv8 CRC extension, with a
-  slice-by-8 fallback and `crc32c_combine` (`crc32c.hh`, no dependencies).
 - **xxHash optional.** A runtime xxHash fast path switches on when `xxhash.h` is
   on the include path.
 
@@ -49,7 +47,6 @@ target_link_libraries(my_app PRIVATE hashes::hashes)
 
 ```cpp
 #include "hashes.hh"
-#include "crc32c.hh"
 
 #include <string_view>
 
@@ -61,8 +58,6 @@ int method(std::string_view s) {
 		default:                       return 0;
 	}
 }
-
-static_assert(hashes::crc32c("123456789") == 0xe3069283);   // constexpr, too
 ```
 
 [`examples/demo.cc`](examples/demo.cc) runs one word through every family and
@@ -72,18 +67,15 @@ shows `jump_consistent_hash` placing a key as buckets grow.
 
 - ✅ Dispatch on a fixed set of strings, alone or in front of
   [constexpr-phf](https://github.com/Kronuz/constexpr-phf) for a dense jump table.
-- ✅ Checksums on stored or transmitted data (CRC-32C).
 - ❌ Passwords, signatures, or anything adversarial: none of these hashes is
   cryptographic.
 
 ## 📚 Documentation
 
 - [docs/API.md](docs/API.md): the families, the string switch, the literals and
-  their quirks, the xxHash seam, and CRC-32C.
-- [docs/BENCHMARKS.md](docs/BENCHMARKS.md): CRC-32C throughput, and which hash
-  wins string dispatch.
-- [ARCHITECTURE.md](ARCHITECTURE.md): how the families and the CRC paths are
-  built.
+  their quirks, and the xxHash seam.
+- [docs/BENCHMARKS.md](docs/BENCHMARKS.md): which hash wins string dispatch.
+- [ARCHITECTURE.md](ARCHITECTURE.md): how the families are built.
 - [AGENTS.md](AGENTS.md): repository map, invariants, and traps.
 
 ## 🛠️ Building and testing
@@ -102,6 +94,6 @@ store them), so a change must keep every existing value; read
 ## 📄 License
 
 MIT. `hashes.hh` is Copyright (c) 2015-2019 Dubalu LLC, with portions Copyright
-(c) 2015 Daniel Kirchner; `crc32c.hh` is Copyright (c) 2026 Germán Méndez Bravo.
+(c) 2015 Daniel Kirchner.
 See [LICENSE](LICENSE) and each file's header. Extracted from
 [Xapiand](https://github.com/Kronuz/Xapiand).

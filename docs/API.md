@@ -52,22 +52,3 @@ The header auto-detects this via `__has_include("xxhash.h")` / `<xxhash.h>`:
 Force the choice with `-DSTRING_KIT_HAS_XXHASH=1` or `=0` if you don't want the
 auto-detection.
 
-## CRC-32C
-
-```cpp
-#include "crc32c.hh"
-
-std::uint32_t c = hashes::crc32c(data, size);            // one shot
-hashes::Crc32c crc;                                      // incremental
-crc.update(header, header_size).update(body, body_size);
-static_assert(hashes::crc32c("123456789") == 0xe3069283);  // constexpr
-auto both = hashes::crc32c_combine(crc_a, crc_b, size_b);  // CRC of A‖B without rereading
-```
-
-At runtime it uses the CPU's CRC-32C instruction (SSE4.2 on x86-64, the ARMv8 CRC
-extension on AArch64), detected once, and falls back to a slice-by-8 table.
-Buffers of 3 KiB and more run three interleaved instruction streams, which hides
-the instruction's latency, and merge them with precomputed shift constants.
-
-[BENCHMARKS.md](BENCHMARKS.md) has its throughput.
-

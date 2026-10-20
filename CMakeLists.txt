@@ -47,11 +47,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   add_executable(hashes_test test/test.cc)
   target_link_libraries(hashes_test PRIVATE hashes)
   add_test(NAME hashes COMMAND hashes_test)
-  add_executable(crc32c_test test/crc32c_test.cc)
-  target_link_libraries(crc32c_test PRIVATE hashes)
-  add_test(NAME crc32c COMMAND crc32c_test)
-  add_executable(crc32c_bench bench/crc32c.cc)
-  target_link_libraries(crc32c_bench PRIVATE hashes)
 
   # A runnable tour of the library (not a test): build & run ./build/hashes_demo.
   # Links the same `hashes` target as the test, so static_string.hh / chars.hh
