@@ -31,8 +31,12 @@ and the switch and the second name were never needed. Commits 233254b and 512a20
 - crc32c.hh, test/crc32c_test.cc, bench/crc32c.cc removed; README, ARCHITECTURE, AGENTS,
   docs/API.md, docs/BENCHMARKS.md and the diagram updated. The CRC throughput table moved
   to crc32c's docs/BENCHMARKS.md.
-- hashes' suite (`hashes`) passes; a project that takes hashes and crc32c together
-  configures and builds in both declaration orders.
+- hashes' suite (`hashes`) passes. A project that takes hashes and journal (which takes
+  crc32c) configures, builds and runs in both declaration orders, with hashes at this
+  branch and at 7ab0c23 (which still has its own `crc32c.hh`, in namespace `hashes`; the
+  two coexist). Detent's closure, with its pins unchanged, configures and generates with
+  journal switched to the Detent replay branch. CI for this branch: run 39421533539, all
+  eight jobs green.
 
 ## Next
 
