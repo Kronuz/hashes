@@ -11,9 +11,10 @@ easy to fall into.
 hashes.hh                    constexpr FNV-1a, djb2, xxHash-64, mixer, jump_consistent_hash + _fnv1a/_xx UDLs. Header.
 crc32c.hh                    CRC-32C: hardware (SSE4.2, ARMv8 CRC) with runtime detection, slice-by-8 fallback, constexpr, combine. No dependencies.
 test/test.cc                 Runnable smoke test: hash values, static_string hashing, mixer/jump, _fnv1a/_xx string switch.
-test/crc32c_test.cc          CRC-32C vectors, hardware vs table at every length and alignment, incremental, combine.
+test/crc32c_test.cc          CRC-32C vectors, hardware vs table at every length, alignment and state, empty and fragmented updates, combine.
 bench/crc32c.cc              CRC-32C throughput: hardware vs slice-by-8 vs byte table.
-CMakeLists.txt               INTERFACE library `hashes` (+ alias hashes::hashes); FetchContents static-string + char-classify; CTest test `hashes`.
+CMakeLists.txt               INTERFACE `hashes::crc32c` (no dependencies); with HASHES_FAMILIES (ON) also `hashes::hashes`, which FetchContents static-string + char-classify. CTest: `hashes`, `crc32c`, `crc32c_consumer`.
+test/consumer/               A project that takes only hashes::crc32c with fetching disabled; the crc32c_consumer test configures and runs it.
 LICENSE                      MIT, Copyright (c) 2015-2019 Dubalu LLC (+ Daniel Kirchner, in the header).
 README.md                    What it is, install, quick start.
 docs/API.md                  The families, string switches, the literals, the xxHash seam, CRC-32C.
@@ -113,6 +114,12 @@ cmake -B build \
   `FetchContent` uses the first declaration of each name, so if Xapiand (or any
   consumer) declares `static_string` / `char_classify` before pulling `hashes`,
   those win and dedup — make sure the SHAs are compatible.
+- **`crc32c.hh` must keep to the standard library.** `hashes::crc32c` is the target
+  journal and other CRC-only consumers fetch with `HASHES_FAMILIES` OFF; any include
+  of `hashes.hh`, `static_string.hh` or `chars.hh` from it breaks them. `EXCLUDE_FROM_ALL`
+  would not stop the fetch, which is why the option exists. The same first-declaration
+  rule applies to hashes itself: a build that needs `hashes::hashes` must make hashes
+  available with the families on before a CRC-only consumer does.
 
 ## Standalone vs. Xapiand
 

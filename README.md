@@ -45,6 +45,17 @@ FetchContent_MakeAvailable(hashes)
 target_link_libraries(my_app PRIVATE hashes::hashes)
 ```
 
+CRC-32C alone needs neither dependency. Turn the families off before making hashes available and link `hashes::crc32c`; nothing else is fetched, and `hashes::hashes` is not defined:
+
+```cmake
+set(HASHES_FAMILIES OFF)
+FetchContent_MakeAvailable(hashes)
+
+target_link_libraries(my_app PRIVATE hashes::crc32c)
+```
+
+`FetchContent` keeps the first declaration of a name, so a build that also needs `hashes::hashes` must make hashes available with the families on before any CRC-32C-only consumer does.
+
 ## 🚀 Quick start
 
 ```cpp
