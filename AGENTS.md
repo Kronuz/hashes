@@ -13,8 +13,10 @@ crc32c.hh                    CRC-32C: hardware (SSE4.2, ARMv8 CRC) with runtime 
 test/test.cc                 Runnable smoke test: hash values, static_string hashing, mixer/jump, _fnv1a/_xx string switch.
 test/crc32c_test.cc          CRC-32C vectors, hardware vs table at every length, alignment and state, empty and fragmented updates, combine.
 bench/crc32c.cc              CRC-32C throughput: hardware vs slice-by-8 vs byte table.
-CMakeLists.txt               INTERFACE `hashes::crc32c` (no dependencies); with HASHES_FAMILIES (ON) also `hashes::hashes`, which FetchContents static-string + char-classify. CTest: `hashes`, `crc32c`, `crc32c_consumer`.
+CMakeLists.txt               INTERFACE `hashes::hashes`, which FetchContents static-string + char-classify and links `hashes::crc32c`. CTest: `hashes`, `crc32c`, `crc32c_consumer`, `crc32c_order_*`.
+crc32c-leaf/CMakeLists.txt   INTERFACE `hashes::crc32c` (no dependencies), a FetchContent unit of its own (SOURCE_SUBDIR); the root adds it only if the target is absent.
 test/consumer/               A project that takes only hashes::crc32c with fetching disabled; the crc32c_consumer test configures and runs it.
+test/order/                  A project that populates the leaf and the families in either order (and with the families at the pre-leaf commit); the crc32c_order_* tests.
 LICENSE                      MIT, Copyright (c) 2015-2019 Dubalu LLC (+ Daniel Kirchner, in the header).
 README.md                    What it is, install, quick start.
 docs/API.md                  The families, string switches, the literals, the xxHash seam, CRC-32C.
@@ -115,11 +117,12 @@ cmake -B build \
   consumer) declares `static_string` / `char_classify` before pulling `hashes`,
   those win and dedup — make sure the SHAs are compatible.
 - **`crc32c.hh` must keep to the standard library.** `hashes::crc32c` is the target
-  journal and other CRC-only consumers fetch with `HASHES_FAMILIES` OFF; any include
-  of `hashes.hh`, `static_string.hh` or `chars.hh` from it breaks them. `EXCLUDE_FROM_ALL`
-  would not stop the fetch, which is why the option exists. The same first-declaration
-  rule applies to hashes itself: a build that needs `hashes::hashes` must make hashes
-  available with the families on before a CRC-only consumer does.
+  journal and other CRC-only consumers fetch through `crc32c-leaf/` under the FetchContent
+  name `hashes_crc32c`; any include of `hashes.hh`, `static_string.hh` or `chars.hh` from it
+  breaks them. That name never touches `hashes`, so the order of population does not matter
+  (`crc32c_order_*` pins it). The cost is a second clone when both are populated, harmless
+  because `crc32c.hh` is the same in both: keep it frozen, or version its namespace, if the
+  two can sit at different commits.
 
 ## Standalone vs. Xapiand
 

@@ -45,16 +45,20 @@ FetchContent_MakeAvailable(hashes)
 target_link_libraries(my_app PRIVATE hashes::hashes)
 ```
 
-CRC-32C alone needs neither dependency. Turn the families off before making hashes available and link `hashes::crc32c`; nothing else is fetched, and `hashes::hashes` is not defined:
+CRC-32C alone needs neither dependency. Declare it under its own FetchContent name with `SOURCE_SUBDIR crc32c-leaf` and link `hashes::crc32c`; nothing else is fetched and `hashes::hashes` is not defined (CMake 3.18 or newer):
 
 ```cmake
-set(HASHES_FAMILIES OFF)
-FetchContent_MakeAvailable(hashes)
+FetchContent_Declare(
+  hashes_crc32c
+  GIT_REPOSITORY https://github.com/Kronuz/hashes.git
+  GIT_TAG        <commit>
+  SOURCE_SUBDIR  crc32c-leaf)
+FetchContent_MakeAvailable(hashes_crc32c)
 
 target_link_libraries(my_app PRIVATE hashes::crc32c)
 ```
 
-`FetchContent` keeps the first declaration of a name, so a build that also needs `hashes::hashes` must make hashes available with the families on before any CRC-32C-only consumer does.
+This never touches the `hashes` name, so it does not matter which of the two a build populates first, and a build that also needs `hashes::hashes` works unchanged. If both are populated the repository is cloned twice; `crc32c.hh` is the same in both.
 
 ## 🚀 Quick start
 
