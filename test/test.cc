@@ -8,11 +8,13 @@
 // static_string hash argument).
 //
 // Build via CMake: cmake -B build && cmake --build build && ctest --test-dir build
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hashes.hh"
 #include "static_string.hh"
@@ -174,11 +176,71 @@ static void test_string_switch() {
 }
 
 
+// ---------------------------------------------------------------------------
+// 5. wordwise 32-bit reduction: hash32 is the high half and keeps short keys apart.
+// ---------------------------------------------------------------------------
+
+static std::size_t count_collisions(std::vector<std::uint32_t> v) {
+	std::sort(v.begin(), v.end());
+	return static_cast<std::size_t>(v.end() - std::unique(v.begin(), v.end()));
+}
+
+// Keys of 5..7 bytes that differ only past byte 4 (the xor-fold's blind spot).
+template <typename Emit>
+static void worst_short_keys(Emit&& emit) {
+	for (int v = 0; v < 100000; ++v) {  // "Q00000".."Q99999"
+		char b[8];
+		std::snprintf(b, sizeof b, "Q%05d", v);
+		emit(std::string_view(b, 6));
+	}
+	for (int i = 0; i < 26 * 26 * 26; ++i) {  // "abcd" + 3 lowercase
+		char b[8] = {'a', 'b', 'c', 'd', char('a' + i % 26), char('a' + i / 26 % 26), char('a' + i / 676)};
+		emit(std::string_view(b, 7));
+	}
+}
+
+static void test_wordwise_hash32() {
+	// 64-bit outputs are pinned: hash32 is additive.
+	static_assert(wordwise::hash("", 0) == 0x22bfeb33692f3c9cULL, "wordwise empty");
+	static_assert(wordwise::hash("get", 3) == 0x3b5bea2f9f73dd68ULL, "wordwise get");
+	static_assert(wordwise::hash("Q1000", 5) == 0x8c9575719f099e16ULL, "wordwise Q1000");
+	static_assert(wordwise::hash("abcdefgh", 8) == 0xdaa50359e054f2d3ULL, "wordwise 8 bytes");
+	static_assert(wordwise_ci::hash("Q1000", 5) == 0x5384aca0af68c2a7ULL, "wordwise_ci Q1000");
+	static_assert(wordwise_ci::hash("Hello, wordwise! 0123456789", 27) == 0x8053d7ee1f210514ULL, "wordwise_ci long");
+
+	// hash32 is the high half, through every overload.
+	static_assert(wordwise::hash32("Q1000", 5) == static_cast<std::uint32_t>(wordwise::hash("Q1000", 5) >> 32), "high half");
+	static_assert(wordwise::hash32("Q1000") == wordwise::hash32("Q1000", 5), "literal overload");
+	static_assert(wordwise::hash32(std::string_view("Q1000")) == wordwise::hash32("Q1000", 5), "string_view overload");
+	static_assert(wordwise::hash32(string("Q1000")) == wordwise::hash32("Q1000", 5), "static_string overload");
+	static_assert(wordwise_ci::hash32("Q1000") == static_cast<std::uint32_t>(wordwise_ci::hash("Q1000") >> 32), "ci high half");
+	static_assert(wordwise_ci::hash32("DAY") == wordwise_ci::hash32("day"), "ci folds case");
+
+	// The worst short-key set: the xor-fold of the halves loses all but 10 or 17576 values;
+	// hash32 stays at the 32-bit birthday expectation (about 1 collision in 117,576 keys).
+	std::vector<std::uint32_t> hi, ci, xorfold;
+	worst_short_keys([&](std::string_view k) {
+		hi.push_back(wordwise::hash32(k));
+		ci.push_back(wordwise_ci::hash32(k));
+		const std::uint64_t h = wordwise::hash(k);
+		xorfold.push_back(static_cast<std::uint32_t>(h ^ (h >> 32)));
+	});
+	const std::size_t n = hi.size();
+	assert(count_collisions(xorfold) > n / 2);  // the hazard hash32 avoids
+	assert(count_collisions(hi) <= 3);
+	assert(count_collisions(ci) <= 3);
+
+	std::printf("hashes wordwise hash32 OK: %zu short keys, %zu collisions (xor-fold: %zu)\n",
+	            n, count_collisions(hi), count_collisions(xorfold));
+}
+
+
 int main() {
 	test_hash_values();
 	test_static_string_hash();
 	test_mixer_and_jump();
 	test_string_switch();
+	test_wordwise_hash32();
 	std::printf("all hashes tests passed\n");
 	return 0;
 }

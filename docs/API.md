@@ -27,9 +27,18 @@ constexpr std::uint32_t g = "get"_fnv1a;         // FNV-1a UDL (see note below)
 string literals, `static_string`, and `std::string`/`std::string_view`. `mixer`
 hashes integers; `jump_consistent_hash` buckets a key into `[0, num_buckets)`.
 
-The `_fnv1a` UDL is declared `uint32_t` while hashing with `fnv1ah64`, so it
-carries the *low 32 bits* of the 64-bit FNV-1a — a quirk preserved verbatim from
-Xapiand. Call sites may depend on the value, so it isn't "fixed."
+The `_fnv1a` UDL is `fnv1ah32` of the same bytes, so its labels mix freely with an
+`fnv1ah32`-hashed switch value.
+
+### 32-bit values from `wordwise`
+
+`wordwise::hash` and `wordwise_ci::hash` return 64 bits. For a 32-bit table or key map take
+`hash32(...)`, the high half (`hash(...) >> 32`), with the same overloads. Do not xor-fold the
+halves: the hash ends in `h ^= h >> 32`, so `lo ^ hi` is the low half of the last multiply,
+which sees only the first four bytes of a key under eight bytes (`"Q1000"` to `"Q1006"` share
+one value; 5-byte lowercase keys collide 696 times above the birthday expectation). The
+plain truncation `uint32_t(hash(...))` is sound too. `hash32` is what a persisted 32-bit
+value should use; the measurements are in `docs/BENCHMARKS.md`.
 
 ## The optional xxHash seam
 

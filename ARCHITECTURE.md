@@ -45,8 +45,8 @@ len)`, `hash(literal)`, `hash(static_string)`, `hash(string/string_view)`, and a
 The user-defined literals make compile-time string switches ergonomic: `"get"_xx`
 is the `constexpr` xxHash-64 of the bytes, `"get"_fnv1a` the FNV-1a. Used as
 `switch`/`case` labels, they let a runtime hash dispatch against compile-time
-constants. (`_fnv1a` is declared `uint32_t` while hashing with `fnv1ah64`, so it
-carries the low 32 bits — a quirk preserved verbatim from Xapiand.)
+constants. (`_fnv1a` is `fnv1ah32` of the same bytes.) `wordwise` and `wordwise_ci` return 64 bits and
+offer `hash32`, the high half, for 32-bit consumers.
 
 ## The optional xxHash seam
 

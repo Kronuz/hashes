@@ -266,6 +266,26 @@ public:
 		return hash(str.data(), str.size());
 	}
 
+	// 32-bit reduction: the high half. Do not xor-fold the halves: the hash ends in h ^= h >> 32,
+	// so lo ^ hi is the low half of the last multiply, which ignores bytes 4..7 of a short key.
+	constexpr static std::uint32_t hash32(const char* p, std::size_t len) {
+		return static_cast<std::uint32_t>(hash(p, len) >> 32);
+	}
+
+	template <std::size_t N>
+	constexpr static std::uint32_t hash32(const char(&&s)[N]) {
+		return hash32(s, N - 1);
+	}
+
+	template <std::size_t SN, typename ST>
+	constexpr static std::uint32_t hash32(const static_string::static_string<SN, ST>& str) {
+		return hash32(str.data(), str.size());
+	}
+
+	constexpr static std::uint32_t hash32(std::string_view str) {
+		return hash32(str.data(), str.size());
+	}
+
 	template <typename... Args>
 	constexpr auto operator()(Args&&... args) const {
 		return hash(std::forward<Args>(args)...);
@@ -331,6 +351,26 @@ public:
 
 	constexpr static std::uint64_t hash(std::string_view str) {
 		return hash(str.data(), str.size());
+	}
+
+	// 32-bit reduction: the high half. Do not xor-fold the halves: the hash ends in h ^= h >> 32,
+	// so lo ^ hi is the low half of the last multiply, which ignores bytes 4..7 of a short key.
+	constexpr static std::uint32_t hash32(const char* p, std::size_t len) {
+		return static_cast<std::uint32_t>(hash(p, len) >> 32);
+	}
+
+	template <std::size_t N>
+	constexpr static std::uint32_t hash32(const char(&&s)[N]) {
+		return hash32(s, N - 1);
+	}
+
+	template <std::size_t SN, typename ST>
+	constexpr static std::uint32_t hash32(const static_string::static_string<SN, ST>& str) {
+		return hash32(str.data(), str.size());
+	}
+
+	constexpr static std::uint32_t hash32(std::string_view str) {
+		return hash32(str.data(), str.size());
 	}
 
 	template <typename... Args>

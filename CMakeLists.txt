@@ -65,4 +65,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   target_link_libraries(hashes_bench_dispatch PRIVATE hashes constexpr_phf)
   target_include_directories(hashes_bench_dispatch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/bench)
   target_compile_options(hashes_bench_dispatch PRIVATE -O3)
+
+  # Benchmark (not a test): short-key collisions of every 32-bit output and 64-to-32 reduction.
+  add_executable(hashes_bench_collisions bench/collisions.cc)
+  target_link_libraries(hashes_bench_collisions PRIVATE hashes)
+  target_compile_options(hashes_bench_collisions PRIVATE -O2)
 endif()

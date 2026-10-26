@@ -81,11 +81,11 @@ cmake -B build \
 - **The `constexpr` `xxh64::hash(p, len)` core is self-contained — never make it
   call `XXH64()`.** Only the runtime string/string_view overloads may. The `_xx`
   UDL and any `static_assert`-able hash depend on the core staying `constexpr`.
-- **The `_fnv1a` UDL truncates to 32 bits on purpose (inherited).** It is declared
-  `operator"" _fnv1a(...) -> std::uint32_t` while hashing with `fnv1ah64`, so it
-  carries the low 32 bits of the 64-bit FNV-1a. That's a Xapiand quirk preserved
-  verbatim; the test asserts exactly that (`== static_cast<uint32_t>(fnv1ah64::
-  hash(...))`). Don't "fix" it silently — call sites may depend on the value.
+- **The 64-bit outputs are format-affecting.** Callers persist `xxh64` (bloom filters, sortable
+  values) and `fnv1ah64` (shard routing), and compile `wordwise`/`fnv1ah32` values into case labels
+  and enum values. A change to any existing output needs the caller list in `docs/status/fold32.md`
+  first. `wordwise::hash32` (the high half) is the 32-bit reduction; never xor-fold its halves.
+- **`_fnv1a` is `fnv1ah32`** (pinned by the test), not a truncated `fnv1ah64`.
 
 ## How to extend
 
