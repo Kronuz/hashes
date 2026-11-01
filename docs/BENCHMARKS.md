@@ -60,82 +60,95 @@ below four bytes); `fnv1a32` runs 2 to 3x over on four-byte printable keys.
 
 ## Benchmark: against xxHash and absl::Hash
 
-`bench/compare.cc` times `xxh64`, `wordwise` and `fnv1a64` beside xxHash v0.8.4 (`XXH64`,
-`XXH3_64bits`, fetched by the benchmark target only), `absl::Hash` when abseil is installed,
-and `candidate::wordwise8` (below). Each call hashes a key at one of 4096 offsets of a random
-buffer, on one thread; each cell is the fastest of two runs of nine windows. `hashes` is
-compiled with `STRING_KIT_HAS_XXHASH=0`, so `xxh64` is its own `constexpr` code and not a
-call into `XXH64`. Before timing, the benchmark checks `xxh64` against `XXH64` for every
-length it times.
+`bench/compare.cc` times `xxh64`, `wordwise` and `fnv1a64` beside xxHash v0.8.4
+([Cyan4973/xxHash](https://github.com/Cyan4973/xxHash); `XXH64`, `XXH3_64bits`, fetched at that tag by the
+benchmark target only), `absl::Hash<std::string_view>` from [abseil](https://github.com/abseil/abseil-cpp)
+20260817.0 (the Homebrew formula `abseil`, installed on both machines and found by CMake when present), and
+`candidate::wordwise8` (below). Each call hashes a key at one of 4096 offsets of a random buffer, on one
+thread; each cell is the fastest of nine windows, then the lower of two runs. `hashes` is compiled with
+`STRING_KIT_HAS_XXHASH=0`, so `xxh64` is its own `constexpr` code and not a call into `XXH64`.
+
+Which columns return the same values: `xxh64` equals `XXH64`. The benchmark checks it before every run,
+for each length it times and every length from 0 to 130, at random offsets and with seed 0 and random seeds,
+and `hashes_compare --check` runs only that check (CTest runs it as `hashes_compare`). `XXH3`, `absl::Hash`,
+`wordwise`, the candidate and `fnv1a64` are different hash functions with different values, so their columns
+time other functions. `absl::Hash` is seeded from an address in the process, so its values differ between
+runs, and it is not `constexpr`.
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DHASHES_BUILD_BENCH=ON
-cmake --build build --target hashes_compare && ./build/hashes_compare
+cmake --build build --target hashes_compare
+./build/hashes_compare --check        # no timing: xxh64 against XXH64, and the candidate's properties
+./build/hashes_compare                # the tables below
 ./build/hashes_compare --quality      # avalanche and duplicates
 ```
 
-ns per hash on an Apple M4 Pro (Apple clang 17, `-O3`):
+Both machines build with Apple clang 17 and `-O3 -DNDEBUG -std=gnu++20` (a CMake Release build).
+
+ns per hash on an Apple M4 Pro (macOS); the two runs differ by at most 2% in any cell:
 
 | bytes | xxh64 | XXH64 | XXH3 | absl::Hash | wordwise | candidate | fnv1a64 |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 4 | 1.29 | 1.10 | 1.28 | 0.55 | 0.76 | 1.56 | 1.01 |
-| 8 | 1.28 | 1.25 | 1.27 | 0.54 | 0.81 | 1.36 | 2.04 |
-| 12 | 1.78 | 1.57 | 1.29 | 0.50 | 1.40 | 1.36 | 3.09 |
-| 16 | 1.74 | 1.72 | 1.27 | 0.51 | 1.08 | 1.37 | 4.72 |
-| 24 | 2.30 | 2.24 | 1.79 | 0.85 | 1.39 | 1.76 | 7.85 |
-| 32 | 3.59 | 3.60 | 1.78 | 0.85 | 1.75 | 1.78 | 12.03 |
-| 48 | 4.81 | 4.86 | 2.61 | 1.28 | 2.51 | 3.34 | 21.70 |
-| 64 | 4.69 | 4.68 | 2.62 | 1.29 | 3.38 | 3.33 | 32.35 |
-| 100 | 6.30 | 6.28 | 4.46 | 2.04 | 5.71 | 6.97 | 63.20 |
-| 256 | 11.83 | 11.77 | 5.92 | 2.92 | 22.21 | 10.79 | 212 |
-| 1024 | 41.31 | 40.60 | 21.36 | 7.90 | 147 | 31.36 | 987 |
-| 16384 | 679 | 674 | 350 | 240 | 3090 | 474 | 16776 |
-| 131072 | 5447 | 5458 | 2786 | 2128 | 24946 | 3789 | 132930 |
+| 4 | 1.28 | 1.08 | 1.28 | 0.54 | 0.74 | 1.53 | 1.02 |
+| 8 | 1.28 | 1.26 | 1.28 | 0.54 | 0.81 | 1.37 | 2.05 |
+| 12 | 1.78 | 1.57 | 1.27 | 0.50 | 1.39 | 1.38 | 3.27 |
+| 16 | 1.74 | 1.71 | 1.29 | 0.50 | 1.09 | 1.38 | 4.77 |
+| 24 | 2.30 | 2.25 | 1.80 | 0.85 | 1.42 | 1.77 | 7.86 |
+| 32 | 3.60 | 3.61 | 1.79 | 0.85 | 1.72 | 1.77 | 12.06 |
+| 48 | 4.81 | 4.91 | 2.61 | 1.28 | 2.50 | 3.32 | 21.91 |
+| 64 | 4.74 | 4.72 | 2.62 | 1.29 | 3.38 | 3.34 | 32.25 |
+| 100 | 6.34 | 6.27 | 4.45 | 2.03 | 5.74 | 6.95 | 63.05 |
+| 256 | 11.95 | 11.86 | 6.00 | 2.84 | 22.18 | 10.83 | 215 |
+| 1024 | 41.24 | 41.09 | 21.30 | 7.94 | 148 | 32.00 | 1003 |
+| 16384 | 679 | 682 | 350 | 241 | 3114 | 477 | 16823 |
+| 131072 | 5474 | 5422 | 2808 | 2137 | 25141 | 3789 | 134115 |
 
-ns per hash on an Intel Core i9-9980HK (Apple clang 17, `-O3`). Rows from 4 to 100 bytes
-vary by up to 20% between runs on this machine:
+ns per hash on an Intel Core i9-9980HK (macOS, x86-64); the two runs differ by up to 16% in a cell (16% at
+16 bytes, 12% at 100 bytes), so differences under about 15% between two cells here are noise:
 
 | bytes | xxh64 | XXH64 | XXH3 | absl::Hash | wordwise | candidate | fnv1a64 |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 4 | 3.09 | 2.63 | 3.27 | 1.02 | 2.12 | 3.55 | 2.07 |
-| 8 | 3.16 | 3.12 | 3.29 | 1.03 | 2.05 | 3.50 | 3.49 |
-| 12 | 4.29 | 3.98 | 3.27 | 1.02 | 4.38 | 3.36 | 5.10 |
-| 16 | 4.68 | 4.09 | 3.10 | 1.02 | 2.66 | 3.38 | 7.16 |
-| 24 | 5.55 | 5.11 | 3.51 | 1.71 | 3.45 | 4.20 | 11.98 |
-| 32 | 8.89 | 7.76 | 3.59 | 1.76 | 4.20 | 4.31 | 17.91 |
-| 48 | 10.81 | 10.17 | 5.18 | 5.21 | 5.85 | 7.75 | 31.55 |
-| 64 | 11.47 | 10.40 | 5.51 | 5.31 | 7.98 | 7.81 | 47.38 |
-| 100 | 14.25 | 13.75 | 8.07 | 9.78 | 15.25 | 16.21 | 85.98 |
-| 256 | 24.36 | 24.54 | 19.75 | 14.56 | 40.57 | 24.39 | 256 |
-| 1024 | 80.09 | 80.27 | 51.94 | 48.72 | 199 | 69.41 | 1096 |
-| 16384 | 1191 | 1191 | 782 | 749 | 3563 | 1040 | 18801 |
-| 131072 | 9469 | 9281 | 5808 | 5772 | 27450 | 8841 | 146416 |
+| 4 | 2.73 | 2.39 | 2.87 | 0.97 | 1.92 | 3.17 | 1.91 |
+| 8 | 3.02 | 2.74 | 2.97 | 1.00 | 1.82 | 3.22 | 3.04 |
+| 12 | 4.14 | 3.61 | 2.85 | 1.00 | 4.13 | 3.20 | 4.88 |
+| 16 | 4.17 | 3.69 | 2.93 | 0.97 | 2.44 | 3.16 | 6.43 |
+| 24 | 5.25 | 4.52 | 3.15 | 1.65 | 3.08 | 3.83 | 10.81 |
+| 32 | 8.24 | 7.42 | 3.14 | 1.67 | 3.70 | 3.81 | 16.06 |
+| 48 | 10.12 | 9.35 | 4.54 | 4.57 | 5.22 | 6.74 | 27.27 |
+| 64 | 9.65 | 8.99 | 4.51 | 4.62 | 6.90 | 6.85 | 40.74 |
+| 100 | 12.64 | 11.99 | 7.20 | 8.09 | 13.20 | 13.68 | 76.16 |
+| 256 | 20.98 | 20.48 | 16.94 | 12.71 | 35.15 | 21.20 | 223 |
+| 1024 | 67.57 | 66.58 | 45.13 | 39.49 | 177 | 60.75 | 952 |
+| 16384 | 1015 | 993 | 629 | 645 | 3046 | 883 | 16233 |
+| 131072 | 8096 | 8085 | 5085 | 5002 | 23769 | 7686 | 128565 |
 
-- **`xxh64` equals XXH64.** The values match for every length and seed tested. The
-  `constexpr` code runs within 0 to 17% of `XXH64`: 1.17x at 4 bytes on both machines and 1.15x
-  at 32 bytes on the i9, closing above 256 bytes. It computes one 8-byte lane per step and stays
-  scalar.
-- **`wordwise` is the fastest family of the library from 8 bytes up, and falls behind XXH3 as
-  keys grow.** It beats XXH3 at 4, 8, 16 and 24 bytes on both machines, loses at 12 (its 4-byte
-  tail is read byte by byte), and from 32 bytes on the M4 Pro (48 on the i9) it is slower. On the
-  M4 Pro its time is 0.59x of XXH3's at 4 bytes, 0.85x at 16, 1.29x at 64, 3.75x at 256, 6.9x at
-  1 KiB and 9.0x at 128 KiB. On the i9 the ratios are 0.65x, 0.86x, 1.45x, 2.05x, 3.8x and 4.7x.
-  It mixes one 8-byte word per dependent multiply, so its time grows with the key. Its values
-  are frozen, so a faster hash for long keys is a new family.
-- **`absl::Hash` is faster than XXH3 at every length on the M4 Pro.** On the i9 it is faster below
-  48 bytes and about level with XXH3 above 1 KiB, and slower at 100 bytes (9.78 against 8.07 ns).
-- **`fnv1a64` costs one multiply per byte**: 48x XXH3's time at 128 KiB on the M4 Pro.
-- **A 64-bit integer key** takes 0.76 ns through `mixer::mix`, against 1.00 ns for `XXH3_64bits`,
-  1.04 ns for `XXH64` and 0.40 ns for `absl::Hash` (M4 Pro); 1.74, 1.92, 2.20 and 0.71 ns on the i9.
+- **`xxh64` equals XXH64.** The `constexpr` code takes up to 1.19x `XXH64`'s time on the M4 Pro (at 4
+  bytes) and 1.16x on the i9 (at 24 bytes), and is level within 2% from 256 bytes up on both. It computes
+  one 8-byte lane per step and stays scalar.
+- **`wordwise` is the cheapest family of the library up to 100 bytes on the M4 Pro and up to 64 bytes on
+  the i9 (level with `fnv1a64` at 4 bytes there), and falls behind XXH3 as keys grow.** On the M4 Pro it
+  beats XXH3 at 4, 8, 16, 24, 32 and 48 bytes, loses at 12 (its 4-byte tail is read byte by byte) and is
+  slower from 64 bytes; its time is 0.58x of
+  XXH3's at 4 bytes, 0.84x at 16, 1.29x at 64, 3.7x at 256, 7.0x at 1 KiB and 9.0x at 128 KiB. On the i9
+  it beats XXH3 at 4, 8, 16 and 24 bytes, loses at 12 and from 32 bytes, and the ratios are 0.67x,
+  0.83x, 1.53x, 2.1x, 3.9x and 4.7x. It mixes one 8-byte word per dependent multiply, so its time grows
+  with the key. Its values are frozen, so a faster hash for long keys is a new family.
+- **`absl::Hash` is faster than `wordwise` at every length on both machines.** It is also faster than
+  XXH3 at every length on the M4 Pro (0.37 to 0.76 of XXH3's time). On the i9 it is 0.33 to 0.53 of
+  XXH3's time up to 32 bytes, level at 48 and 64 bytes, 1.12x at 100 bytes (8.09 against 7.20 ns), and 0.75
+  to 1.03x from 256 bytes up.
+- **`fnv1a64` costs one multiply per byte**: 48x XXH3's time at 128 KiB on the M4 Pro and 25x on the i9.
+- **A 64-bit integer key** takes 0.75 ns through `mixer::mix`, against 1.00 ns for `XXH3_64bits`,
+  1.04 ns for `XXH64` and 0.40 ns for `absl::Hash` (M4 Pro); 1.49, 1.65, 1.88 and 0.61 ns on the i9.
 
 ### The candidate
 
 `bench/candidate_wordwise8.hh` holds `candidate::wordwise8`, a hash written from the algorithm
 and not part of the library. It keeps `wordwise`'s multiplier and step. Up to 64 bytes it reads
 the head and the tail with overlapping loads. Above 64 bytes it runs eight independent lanes over
-64-byte blocks. It cuts `wordwise`'s time at 1 KiB from 147 to 31 ns on the M4 Pro and from 199 to
-69 ns on the i9, and at 128 KiB from 24.9 to 3.8 us on the M4 Pro. Its time stays within 1.0 to
-1.8x of XXH3's on the M4 Pro and 1.0 to 2.0x on the i9, so it does not reach XXH3 or `absl::Hash`.
+64-byte blocks. It cuts `wordwise`'s time at 1 KiB from 148 to 32 ns on the M4 Pro and from 177 to
+61 ns on the i9, and at 128 KiB from 25.1 to 3.8 us on the M4 Pro. Its time stays within 1.0 to
+1.8x of XXH3's on the M4 Pro and 1.1 to 1.9x on the i9, so it does not reach XXH3 or `absl::Hash`.
 Its values differ from `wordwise`'s, so it would ship as a new family.
 `hashes_compare --check` requires every input bit of keys up to 600 bytes to change the hash and
 no byte outside the key to matter.
