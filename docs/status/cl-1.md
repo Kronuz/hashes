@@ -1,7 +1,7 @@
 # CL-1: CRC-32C leaves hashes
 
 Consolidation item CL-1 (`cpp-libraries/docs/reviews/consolidation-2026-10-19.md`).
-Branch `cl-1-crc32c-extract`, worktree `~/code/Kronuz/hashes-wt/cl-1`, base `main` 7ab0c23.
+Branch `cl-1-crc32c-extract`, base `main` 7ab0c23.
 The code review is `docs/reviews/cl-1-code.md`.
 
 ## State

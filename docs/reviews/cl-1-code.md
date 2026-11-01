@@ -6,9 +6,9 @@ Branches reviewed
 
 | Repo | Branch | Commits | Worktree |
 |---|---|---|---|
-| hashes | `cl-1-crc32c-leaf` | 233254b | `~/code/Kronuz/hashes-wt/review-cl1` (detached) |
-| journal | `cl-1-crc32c-forward` | 9e9699e (fixtures + test on the byte table), f91a4ae (forward, delete table) | `~/code/Kronuz/journal-wt/review-cl1` (detached) |
-| journal | `cl-1-detent-replay` | 9826cf4, 71a8562 (same two commits on Detent's journal pin 57e6250) | `~/code/Kronuz/journal-wt/review-cl1-replay` (detached) |
+| hashes | `cl-1-crc32c-leaf` | 233254b | a detached review worktree |
+| journal | `cl-1-crc32c-forward` | 9e9699e (fixtures + test on the byte table), f91a4ae (forward, delete table) | a detached review worktree |
+| journal | `cl-1-detent-replay` | 9826cf4, 71a8562 (same two commits on Detent's journal pin 57e6250) | a detached review worktree |
 | cpp-libraries | `cl-1-crc32c-catalog` | b202514 | read only |
 
 Specs: `cpp-libraries/docs/reviews/consolidation-2026-10-19.md` (CL-1, C1-C4) and Detent's CL-1 row in `Detent/docs/CONSOLIDATION_RESPONSE.md`.
@@ -41,14 +41,14 @@ Conditions (non-blocking, before or with landing)
 
 ### 2. The leaf target: configures cleanly, composition is order-sensitive (CL1-1)
 
-- Leaf alone: the `crc32c_consumer` ctest configures a project with `FETCHCONTENT_FULLY_DISCONNECTED ON` and `HASHES_FAMILIES OFF`, links `hashes::crc32c`, and runs. The test is load-bearing: flipping the consumer to `ON` fails it with "FETCHCONTENT_FULLY_DISCONNECTED is set to true, which requires the source" (`.scratch/mut/families-on`). Journal built from git at the pinned SHA fetches no `static-string` or `char-classify` (`build/_deps` holds completion, allocators, metrics, hashes only).
+- Leaf alone: the `crc32c_consumer` ctest configures a project with `FETCHCONTENT_FULLY_DISCONNECTED ON` and `HASHES_FAMILIES OFF`, links `hashes::crc32c`, and runs. The test is load-bearing: flipping the consumer to `ON` fails it with "FETCHCONTENT_FULLY_DISCONNECTED is set to true, which requires the source" (mutant, not kept). Journal built from git at the pinned SHA fetches no `static-string` or `char-classify` (`build/_deps` holds completion, allocators, metrics, hashes only).
 - Order sensitivity, confirmed in two ways (details under CL1-1).
 
 ### 3. Hardware against fallback: pass on x86-64, ARM not run
 
 - `probe_hw_vs_table.cc`: x86 SSE4.2 routine, the table routine, the dispatcher, an independent bitwise CRC and the public `Crc32c` class fed in random fragments (including empty pieces, both overloads) agree on 60000 cases: states random plus 0, ~0, 1, 0x80000000, 0x82f63b78; offsets 0-63; lengths 0-70000 with extra mass at 1020-1028, 3068-3076 and 6135-6153 (lane and stride boundaries). Also clean under ASan+UBSan (10000 cases).
 - `probe_exact_heap.cc`: exact-size `malloc` blocks, every length 0-7200 at 8 skews, one-shot and two-piece; ASan and UBSan clean, so the hardware loop never reads past `n`.
-- Mutants of `crc32c.hh` all fail the hashes `crc32c_test`: lanes swapped, slice-by-8 last byte wrong, byte tail dropped, hardware ignoring the incoming state, empty update resetting state (`.scratch/mut/m/*`). The hardware test is vacuous on a CPU without the instructions (it prints `hardware no` and passes), see CL1-6.
+- Mutants of `crc32c.hh` all fail the hashes `crc32c_test`: lanes swapped, slice-by-8 last byte wrong, byte tail dropped, hardware ignoring the incoming state, empty update resetting state (mutants not kept). The hardware test is vacuous on a CPU without the instructions (it prints `hardware no` and passes), see CL1-6.
 - Empty and fragmented updates: covered by the new tests (`crc32c_test.cc:68-107`) and my probes.
 
 ### 4. Nothing else references the deleted table: pass
@@ -69,24 +69,24 @@ Where: `hashes CMakeLists.txt:22` (the option) and `:34` (families fetched only 
 
 Why it matters: `FetchContent` populates a name once, and the option is read at population time. Whoever populates `hashes` first decides which targets exist for everyone.
 
-Evidence, synthetic (`hashes-wt/review-cl1/.scratch/order/`):
+Evidence, synthetic (four order cases, not kept):
 
 | Order | Result |
 |---|---|
 | families consumer first, then CRC-only | configures and builds |
 | CRC-only first (option OFF), then an unchanged consumer that links `hashes::hashes` | generate step fails: `hashes::hashes ... target was not found` |
 
-Evidence, the real Detent closure (`journal-wt/review-cl1/.scratch/detent-attr/replay-configure.log`): Detent at 3d05a4f with journal replaced by the replay branch fails to configure: `target "journal" contains hashes::crc32c but the target was not found`, because `enum_reflection` (via the http chain) populates `hashes` first at Detent's pin 7ab0c23. After I bumped Detent's `hashes` pin to 233254b in a scratch copy it configured, built and ran, but only because Detent's own `FetchContent_MakeAvailable` order happens to populate the http chain (families ON) before `consensus` pulls journal (families OFF). That is luck, not a property. A future closure with journal before an `enum-reflection`, `bloom-filter`, `msgpack`, `residency` or `strata` consumer breaks, and those consumers (which link `hashes::hashes` and cannot be told to call a function) are unchanged.
+Evidence, the real Detent closure (a configure log, not kept): Detent at 3d05a4f with journal replaced by the replay branch fails to configure: `target "journal" contains hashes::crc32c but the target was not found`, because `enum_reflection` (via the http chain) populates `hashes` first at Detent's pin 7ab0c23. After I bumped Detent's `hashes` pin to 233254b in a scratch copy it configured, built and ran, but only because Detent's own `FetchContent_MakeAvailable` order happens to populate the http chain (families ON) before `consensus` pulls journal (families OFF). That is luck, not a property. A future closure with journal before an `enum-reflection`, `bloom-filter`, `msgpack`, `residency` or `strata` consumer breaks, and those consumers (which link `hashes::hashes` and cannot be told to call a function) are unchanged.
 
 Design options considered
 
-- B, a lazy `hashes_enable_families()` function (prototype `.scratch/mut/lazy`): works in both orders for consumers that call the function, but unchanged consumers (`enum_reflection` does `FetchContent_MakeAvailable(constexpr_phf hashes)` and links `hashes::hashes`) cannot call it. Not sufficient.
+- B, a lazy `hashes_enable_families()` function (prototype, not kept): works in both orders for consumers that call the function, but unchanged consumers (`enum_reflection` does `FetchContent_MakeAvailable(constexpr_phf hashes)` and links `hashes::hashes`) cannot call it. Not sufficient.
 - D, move CRC-32C to its own repo (`Kronuz/crc32c`), with `hashes` depending on it and keeping a forwarding `crc32c.hh`. Cleanest long-term and order-insensitive, but a new repo, CI and catalog entry for a 200-line header. Reasonable later; not needed to land CL-1.
 - A (recommended, tested): make the leaf its own FetchContent unit, in the same repository, under a different FetchContent name, so journal never touches the `hashes` name and there is no option at all.
 
 #### Design A, concrete changes
 
-1. hashes: add `crc32c-leaf/CMakeLists.txt` (full text of the prototype is in `.scratch/proto-a/repo/crc32c-leaf/CMakeLists.txt`):
+1. hashes: add `crc32c-leaf/CMakeLists.txt` (the prototype's file, not kept; its content):
    ```cmake
    cmake_minimum_required(VERSION 3.14)
    project(hashes_crc32c LANGUAGES CXX)
@@ -112,7 +112,7 @@ Design options considered
 5. README and AGENTS (hashes), the catalog entry and journal README: replace the `HASHES_FAMILIES`/first-declaration sentences with "link `hashes::crc32c` by declaring FetchContent name `hashes_crc32c` with `SOURCE_SUBDIR crc32c-leaf`; this never touches the `hashes` name, so order does not matter".
 6. Detent: no `hashes` pin bump is required for the closure to configure (see test 6 below), though CL-7 pin alignment still applies.
 
-Tested (prototype commit `.scratch/proto-a/repo` branch `protoA`, via `file://` git so real clone paths are exercised, `.scratch/proto-a/cases/`):
+Tested (a prototype repository, via `file://` git so real clone paths are exercised; not kept):
 
 | Case | Result |
 |---|---|
@@ -133,7 +133,7 @@ Should it block landing? Yes, in the sense of "do it before the first pin of the
 
 ### CL1-3 (low-medium): the flipped-byte cases do not pin the individual CRC checks
 
-`journal test/crc_fixture_test.cc:243`: for the generation file the offset is `file_header_v2_size + batch_header_size + 2` = 86. The first replayed batch is empty (`batches()[3] == ""`), so offset 86 lands in the second batch's header, not a payload; `probe_flip_reasons.cc` shows it fails with "batch header checksum mismatch". The batch payload check (`journal.h:354`) is therefore never exercised by a flip. Evidence by mutation (`.scratch/fixture_mutants.sh`, copies of the sources with one check removed): with `journal.h:354` removed the 44 checks still pass; likewise for `journal.h:339` (batch header), `:575`/`:584` (artifact), `:712` (manifest, covered by redundant code), and `turn_log.h:186`/`:199` (turn blocks). `probe_flip_strength.cc` (payload-byte flips) shows the first of these is a real gap: with `journal.h:354` removed it reports "ACCEPTED (silently wrong)" for two generation payload flips, and with `turn_log.h:199` removed one turn-log flip at offset 3000 is not reported. The poly mutant is caught, so the engine swap is pinned; what is not pinned is that each verify site still verifies, which this change does not touch. Fix: flip at `file_header_v2_size + 2 * batch_header_size + 2` (batch payload), and flip several payload offsets in a turn-log segment as `probe_flip_strength.cc` does. Cheap; do it with this branch.
+`journal test/crc_fixture_test.cc:243`: for the generation file the offset is `file_header_v2_size + batch_header_size + 2` = 86. The first replayed batch is empty (`batches()[3] == ""`), so offset 86 lands in the second batch's header, not a payload; `probe_flip_reasons.cc` shows it fails with "batch header checksum mismatch". The batch payload check (`journal.h:354`) is therefore never exercised by a flip. Evidence by mutation (copies of the sources with one check removed, not kept): with `journal.h:354` removed the 44 checks still pass; likewise for `journal.h:339` (batch header), `:575`/`:584` (artifact), `:712` (manifest, covered by redundant code), and `turn_log.h:186`/`:199` (turn blocks). `probe_flip_strength.cc` (payload-byte flips) shows the first of these is a real gap: with `journal.h:354` removed it reports "ACCEPTED (silently wrong)" for two generation payload flips, and with `turn_log.h:199` removed one turn-log flip at offset 3000 is not reported. The poly mutant is caught, so the engine swap is pinned; what is not pinned is that each verify site still verifies, which this change does not touch. Fix: flip at `file_header_v2_size + 2 * batch_header_size + 2` (batch payload), and flip several payload offsets in a turn-log segment as `probe_flip_strength.cc` does. Cheap; do it with this branch.
 
 ### CL1-4 (condition): pins reference an unmerged branch SHA
 
@@ -141,9 +141,9 @@ Should it block landing? Yes, in the sense of "do it before the first pin of the
 
 ### CL1-5 (Detent adoption, not a hashes/journal blocker): the 205/206 attribution is not established
 
-What exists: `Detent/.scratch/cl-1-crc32c/` holds `base-configure.log`, `base-build.log`, `configure.log`, `build.log`, `ctest.log`, `logs/new-pins-ctest.log`. The last two are byte-identical copies of one run (205/206, `test_authority_distribution_poll_publisher (SEGFAULT)` after 48.19 s of a 612 s run). There is no `base-ctest.log`, so the "failed 2 of 3 on unmodified Detent" claim has no artifact I can inspect. The Detent build directories are gone.
+What exists: a scratch directory of the Detent checkout holds `base-configure.log`, `base-build.log`, `configure.log`, `build.log`, `ctest.log`, `logs/new-pins-ctest.log`. The last two are byte-identical copies of one run (205/206, `test_authority_distribution_poll_publisher (SEGFAULT)` after 48.19 s of a 612 s run). There is no `base-ctest.log`, so the "failed 2 of 3 on unmodified Detent" claim has no artifact I can inspect. The Detent build directories are gone.
 
-What I did (`journal-wt/review-cl1/.scratch/detent-attr/`): built only `test_authority_distribution_ownership` (the one binary behind poll_publisher, ownership, idle_100000, idle_500000, held_header and large_scope) from Detent 3d05a4f in two trees, `base` (unmodified pins) and `replay` (journal at 71a8562 plus the hashes pin bump). Then:
+What I did (in a scratch directory, not kept): built only `test_authority_distribution_ownership` (the one binary behind poll_publisher, ownership, idle_100000, idle_500000, held_header and large_scope) from Detent 3d05a4f in two trees, `base` (unmodified pins) and `replay` (journal at 71a8562 plus the hashes pin bump). Then:
 
 1. `ctest -j3` over that group, 3 repetitions each, interleaved: 6 of 6 runs passed in both variants; poll_publisher took 19.3, 20.3, 19.0 s (base) and 18.6, 19.2, 19.3 s (replay).
 2. Three concurrent copies of poll_publisher at once, 4 rounds on base and 4 on replay: all 12 copies of each variant fail identically with a thrown `distribution ownership invariant at 382`, exit 1, not a segfault. Line 382 is `check(std::chrono::steady_clock::now() - began < 45s)` in `tests/detent_authority/test_distribution_ownership.cc`, a wall-clock bound on 100 durable (fsync) transactions. So the test is load-sensitive on unmodified Detent as well.
@@ -176,23 +176,13 @@ Assessment: the observed segfault at 48.19 s is just past that 45 s deadline, wh
 | journal replay 71a8562, Release | 5/5 passed |
 | Detent distribution group via `ctest -j3`, base and replay, 3 reps each | 6/6 and 6/6 passed (CL1-5) |
 
-## Probes, mutants and harnesses kept (none deleted)
+## Probes, mutants and harnesses
 
-hashes review worktree, `/Users/kronuz/code/Kronuz/hashes-wt/review-cl1/.scratch/`:
-- `probe_hw_vs_table.cc`, `probe_exact_heap.cc`, `probe-bin/`
-- `mut/families-on` (consumer test ON mutant), `mut/m/*` (six engine mutants), `mut/lazy` (design B)
-- `order/` (four order cases, synthetic), `proto-a/` (design A repo, cases, disconnected consumer)
-- logs: `cfg-default.log`, `build-default.log`, `cfg-asan.log`, `build-asan.log`; ASan build in `build-asan/`
-- `assert-hard/`
+They lived in scratch directories of the review worktrees and are not part of the repository:
 
-journal review worktree, `/Users/kronuz/code/Kronuz/journal-wt/review-cl1/.scratch/`:
-- `fixture_mutants.sh` and `fixture-mut/*` (poly, seven verify-site removals, hashes fallback-only)
-- `probe_flip_reasons.cc`, `probe_flip_strength.cc`, `probe_old_vs_new_64mib.cc`, `probe-bin/`
-- `old-9e9699e/` (old tree), `regen/` (old-code fixtures), `regen-new/` (new-code fixtures), `assert-hard/`
-- `detent-attr/` (`build.sh`, `attr.sh`, `ab.sh`, `ctest_ab.sh`, `base/`, `replay/`, `protoA-cfg/`, logs, `jproto/`, `src` with the hashes pin bump, `src2` with Detent's own pins)
-- logs: `ctest-release.log`, `ctest-asan-ubsan.log`
-
-Replay worktree: `/Users/kronuz/code/Kronuz/journal-wt/review-cl1-replay/.scratch/` (`old-9826cf4/`, `regen/`, `old_gen`, `new_on_regen`).
+- hashes: a hardware-versus-table probe, an exact-heap probe, six engine mutants, the consumer-ON mutant, the lazy-function design B, four synthetic order cases, the design A prototype repository with its cases and a disconnected consumer, and a hard-assert build.
+- journal: the fixture mutants (the polynomial, seven verify-site removals, a hashes fallback-only build), the flip-reason and flip-strength probes, a 64 MiB old-versus-new probe, the old and regenerated fixture trees, and the Detent attribution scripts with their base and replay trees.
+- Logs: the default and ASan configure and build logs, and the Release and ASan/UBSan ctest logs.
 
 ## Not run
 
