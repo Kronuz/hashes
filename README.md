@@ -7,77 +7,94 @@ Part of [Kronuz C++ Libraries](https://github.com/Kronuz/cpp-libraries), a colle
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
 ![Header-only](https://img.shields.io/badge/header--only-yes-green.svg)
 
-`constexpr` string hashing for C++20, so a `switch` over a runtime string can use
-compile-time `case` labels. For dispatch on keywords and commands without string
-compares. (CRC-32C moved to [crc32c](https://github.com/Kronuz/crc32c).)
-
-![hashes: one hash(...) over every string form, the same value at compile time and at runtime](docs/hashes.svg)
+Header-only constexpr string hashing for C++20: hash a runtime string and switch on compile-time case labels.
+Every hash family is `constexpr`, so the compiler computes each `case` label and the same
+function returns the same value for the runtime input. Reach for it to dispatch on keywords,
+commands or HTTP methods without a chain of string compares.
 
 ## ✨ Highlights
 
-- **String switches.** Hash at compile time for the `case` labels and at runtime
-  for the input; the values match.
-- **Many families, one interface.** FNV-1a (16, 32, 64, case-insensitive), djb2,
-  a `constexpr` xxHash-64, and `wordwise`, a word-at-a-time hash that wins string
-  dispatch on every real key set measured.
-- **Every string form.** `const char*` and length, literals, `static_string`,
-  `std::string`, `std::string_view`.
-- **Integer tools.** `mixer` scrambles integers; `jump_consistent_hash` buckets
-  keys.
-- **xxHash optional.** A runtime xxHash fast path switches on when `xxhash.h` is
-  on the include path.
-
-## 📦 Installation
-
-Requires a C++20 compiler and CMake 3.14 or newer. It fetches
-[static-string](https://github.com/Kronuz/static-string) and
-[char-classify](https://github.com/Kronuz/char-classify) at pinned commits. CI
-builds it on Linux (x86_64, arm64), macOS (arm64, x86_64), and FreeBSD, plus ASan,
-UBSan, and TSan builds.
-
-```cmake
-include(FetchContent)
-FetchContent_Declare(hashes
-  GIT_REPOSITORY https://github.com/Kronuz/hashes.git
-  GIT_TAG        main)
-FetchContent_MakeAvailable(hashes)
-
-target_link_libraries(my_app PRIVATE hashes::hashes)
-```
+- **String switches.** `fnv1ah32::hash("GET")` is a constant expression, so it can be a
+  `case` label, and `fnv1ah32::hash(s)` on a runtime string returns the same value.
+- **Several families, one interface.** FNV-1a (16, 32 and 64 bits, plus case-insensitive
+  variants), djb2, a `constexpr` xxHash-64, and `wordwise`, which reads eight bytes per step.
+- **Every string form.** `const char*` with a length, string literals, `static_string`,
+  `std::string` and `std::string_view`.
+- **Literals.** `"get"_fnv1a` and `"hello"_xx` hash a literal where it is written.
+- **Integer tools.** `mixer` scrambles integers; `jump_consistent_hash` maps a key to one
+  of N buckets.
+- **Optional xxHash fast path.** When `xxhash.h` is on the include path, the runtime
+  `xxh64` and `xxh32` overloads call `XXH64` and `XXH32`.
 
 ## 🚀 Quick start
 
 ```cpp
 #include "hashes.hh"
 
+#include <cstdio>
 #include <string_view>
 
 int method(std::string_view s) {
 	switch (fnv1ah32::hash(s)) {
-		case fnv1ah32::hash("GET"):    return 1;   // compile-time labels
+		case fnv1ah32::hash("GET"):    return 1;  // labels hash at compile time
 		case fnv1ah32::hash("PUT"):    return 2;
 		case fnv1ah32::hash("DELETE"): return 3;
 		default:                       return 0;
 	}
 }
+
+int main() {
+	std::printf("%d %d\n", method("PUT"), method("PATCH"));  // 2 0
+	static_assert("GET"_fnv1a == fnv1ah32::hash("GET"));
+	std::printf("%08x\n", unsigned{"GET"_fnv1a});             // 96e6be77
+}
 ```
 
-[`examples/demo.cc`](examples/demo.cc) runs one word through every family and
-shows `jump_consistent_hash` placing a key as buckets grow.
+[`examples/demo.cc`](examples/demo.cc) runs one word through every family and shows
+`jump_consistent_hash` placing a key as the bucket count grows.
+
+## 📦 Installation
+
+Requires a C++20 compiler and CMake 3.14 or newer; it fetches
+[static-string](https://github.com/Kronuz/static-string) and
+[char-classify](https://github.com/Kronuz/char-classify) at pinned commits. CI builds it on
+Linux (x86_64, arm64), macOS (arm64, x86_64), and FreeBSD, plus ASan, UBSan, and TSan
+builds.
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(hashes
+  GIT_REPOSITORY https://github.com/Kronuz/hashes.git
+  GIT_TAG        1100eddb0e9f4ce960bd2b69592f13feead16bba)  # or main, to track the tip
+FetchContent_MakeAvailable(hashes)
+
+target_link_libraries(my_app PRIVATE hashes::hashes)
+```
+
+```cpp
+#include "hashes.hh"
+```
 
 ## 🎯 When to use it
 
-- ✅ Dispatch on a fixed set of strings, alone or in front of
-  [constexpr-phf](https://github.com/Kronuz/constexpr-phf) for a dense jump table.
-- ❌ Passwords, signatures, or anything adversarial: none of these hashes is
-  cryptographic.
+Use it to dispatch on a fixed set of strings, alone or in front of
+[constexpr-phf](https://github.com/Kronuz/constexpr-phf) for a dense jump table, and
+wherever a hash has to be the same at compile time and at runtime.
+
+Not for:
+
+- **Passwords, signatures or adversarial keys.** None of these hashes is cryptographic.
+- **Checksums.** CRC-32C is in [crc32c](https://github.com/Kronuz/crc32c).
+- **Long keys at full speed.** Above 32 bytes `wordwise` falls behind XXH3, and the
+  `constexpr` `xxh64` stays scalar.
 
 ## ⚡ Performance
 
-String-dispatch keys are short, and there `wordwise` is the cheapest family: on an Apple M4 Pro
-it hashes 4 to 24 bytes in 0.8 to 1.4 ns, ahead of XXH3 (1.3 to 1.8 ns) except at 12 bytes. Above 32 bytes its
-word-at-a-time loop falls behind XXH3, by 1.3x at 64 bytes and 9x at 128 KiB. The self-contained
-`xxh64` runs within 17% of xxHash's `XXH64`. ns per hash, one thread, best of two runs:
+String-dispatch keys are short, and there `wordwise` is the cheapest family: it hashes 4 to
+24 bytes in 0.8 to 1.4 ns, ahead of XXH3 except at 12 bytes. Above 32 bytes its
+word-at-a-time loop falls behind XXH3, by 1.3x at 64 bytes and 9x at 128 KiB. The
+self-contained `xxh64` runs within 17% of xxHash's `XXH64`. ns per hash, one thread, best
+of two runs:
 
 | bytes | `xxh64` | `XXH64` | `XXH3` | `absl::Hash` | `wordwise` |
 | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -88,40 +105,44 @@ word-at-a-time loop falls behind XXH3, by 1.3x at 64 bytes and 9x at 128 KiB. Th
 | 131072 | 5447 | 5458 | 2786 | 2128 | 24946 |
 
 Apple M4 Pro, Apple clang 17 with `-O3`; xxHash v0.8.4 and abseil 20260817. Every row, the
-Intel i9-9980HK numbers and a wide-lane candidate are in
+Intel Core i9-9980HK numbers and a wide-lane candidate are in
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md). Run it with:
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DHASHES_BUILD_BENCH=ON
-cmake --build build --target hashes_compare && ./build/hashes_compare
+cmake --build build --target hashes_compare
+./build/hashes_compare
 ```
 
 ## 📚 Documentation
 
-- [docs/API.md](docs/API.md): the families, the string switch, the literals and
-  their quirks, and the xxHash seam.
+- [docs/API.md](docs/API.md): the families, the string switch, the literals and their
+  quirks, and the xxHash seam.
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md): which hash wins string dispatch, and the
   families against xxHash and absl.
 - [ARCHITECTURE.md](ARCHITECTURE.md): how the families are built.
-- [AGENTS.md](AGENTS.md): repository map, invariants, and traps.
 - [CHANGELOG.md](CHANGELOG.md): dated changes.
+- [AGENTS.md](AGENTS.md): repository map, invariants and traps.
+- [Kronuz C++ Libraries](https://github.com/Kronuz/cpp-libraries): the catalog.
 
 ## 🛠️ Building and testing
 
 ```sh
-cmake -B build && cmake --build build && ctest --test-dir build
-./build/hashes_demo
+cmake -B build
+cmake --build build
+ctest --test-dir build
 ```
+
+Add `-DHASHES_BUILD_BENCH=ON` to build `hashes_compare`, which fetches xxHash and uses
+abseil when it is installed.
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. Hash values are part of the API (call sites
-store them), so a change must keep every existing value; read
-[AGENTS.md](AGENTS.md) first. CI must pass on every platform.
+Read [AGENTS.md](AGENTS.md) and the [catalog's rules](https://github.com/Kronuz/cpp-libraries/blob/main/AGENTS.md)
+first; hash values are part of the API, so a change keeps every existing value.
 
 ## 📄 License
 
-MIT. `hashes.hh` is Copyright (c) 2015-2019 Dubalu LLC, with portions Copyright
-(c) 2015 Daniel Kirchner.
-See [LICENSE](LICENSE) and each file's header. Extracted from
+MIT, Copyright (c) 2026 Germán Méndez Bravo and (c) 2015-2020 Dubalu LLC, with portions
+Copyright (c) 2015 Daniel Kirchner. See [LICENSE](LICENSE). Extracted from
 [Xapiand](https://github.com/Kronuz/Xapiand).

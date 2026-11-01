@@ -20,7 +20,20 @@ releases, so entries are dated.
 - CI builds `hashes_compare` and runs the check.
 - `docs/API.md` and `AGENTS.md` state that the self-contained `xxh64` stays scalar.
 
+### Removed
+
+- The README diagram (`docs/hashes.d2`, `docs/hashes.svg`), a list of the families that the
+  Quick start shows better.
+
 ### Changed
 
+- The README follows the family README standard: the description as its first sentence,
+  Quick start before Installation, a pinned FetchContent tag, and "Not for" limits.
 - `docs/reviews/cl-1-code.md` and `docs/status/cl-1.md` no longer name local
   worktree and scratch paths of the review that produced them.
+
+## Before 2026-10-28
+
+### Removed
+
+- CRC-32C and its throughput table moved to [crc32c](https://github.com/Kronuz/crc32c).

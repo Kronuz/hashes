@@ -20,7 +20,6 @@ README.md                    What it is, install, quick start.
 CHANGELOG.md                 Dated changes.
 docs/API.md                  The families, string switches, the literals, the xxHash seam.
 docs/BENCHMARKS.md           The dispatch, collision and comparator benchmarks.
-docs/hashes.d2               The README diagram's source (docs/hashes.svg is rendered from it).
 ARCHITECTURE.md              Internal design of each hash family, the xxHash seam, trade-offs.
 ```
 
