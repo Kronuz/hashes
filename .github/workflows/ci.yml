@@ -12,3 +12,6 @@ concurrency:
 jobs:
   ci:
     uses: Kronuz/cpp-libraries/.github/workflows/cmake.yml@main
+    with:
+      # Builds hashes_compare, and runs its check of xxh64 against XXH64 (xxHash is fetched).
+      cmake_args: -DHASHES_BUILD_BENCH=ON

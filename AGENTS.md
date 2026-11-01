@@ -10,11 +10,16 @@ easy to fall into.
 ```
 hashes.hh                    constexpr FNV-1a, djb2, xxHash-64, mixer, jump_consistent_hash + _fnv1a/_xx UDLs. Header.
 test/test.cc                 Runnable smoke test: hash values, static_string hashing, mixer/jump, _fnv1a/_xx string switch.
-CMakeLists.txt               INTERFACE library `hashes` (+ alias hashes::hashes); FetchContents static-string + char-classify; CTest test `hashes`.
+bench/dispatch.cc            Which hash wins perfect-hash string dispatch on real key sets (hashes_bench_dispatch).
+bench/collisions.cc          Collisions of the 32-bit reductions on exhaustive key sets (hashes_bench_collisions).
+bench/compare.cc             The families against xxHash (fetched) and absl::Hash (found); `--check` is CTest `hashes_compare` (hashes_compare, -DHASHES_BUILD_BENCH=ON).
+bench/candidate_wordwise8.hh A wide-lane hash timed beside `wordwise`; a candidate, not library code.
+CMakeLists.txt               INTERFACE library `hashes` (+ alias hashes::hashes); FetchContents static-string + char-classify; CTest tests `hashes` and, with the bench option, `hashes_compare`.
 LICENSE                      MIT, Copyright (c) 2015-2019 Dubalu LLC (+ Daniel Kirchner, in the header).
 README.md                    What it is, install, quick start.
+CHANGELOG.md                 Dated changes.
 docs/API.md                  The families, string switches, the literals, the xxHash seam.
-docs/BENCHMARKS.md           The dispatch benchmark.
+docs/BENCHMARKS.md           The dispatch, collision and comparator benchmarks.
 docs/hashes.d2               The README diagram's source (docs/hashes.svg is rendered from it).
 ARCHITECTURE.md              Internal design of each hash family, the xxHash seam, trade-offs.
 ```
@@ -104,6 +109,13 @@ cmake -B build \
   path. The `__has_include` gate is the whole point.
 - **Don't assume `xxh32` exists.** It is only defined when an xxHash backend is
   detected. Code (and tests) that must run without xxHash can't reference it.
+- **The self-contained `xxh64` stays scalar.** It hashes one 8-byte lane at a time, in
+  recursive `constexpr` form, and gives XXH64's values; the benchmark in
+  `bench/compare.cc` checks them against XXH64. Vectorizing it would not help the
+  compile-time use it exists for.
+- **`bench/compare.cc` defines `STRING_KIT_HAS_XXHASH=0` before including `hashes.hh`.**
+  With xxHash on the include path `xxh64::hash(string_view)` calls `XXH64`, and the
+  row would compare XXH64 with itself.
 - **Don't route the `constexpr` hash core through the runtime path.** A
   `static_assert(xxh64::hash("x", 1) == ...)` must stay evaluable at compile time.
 - **A consumer that also FetchContents the deps should declare them first.**

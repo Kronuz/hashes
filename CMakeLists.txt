@@ -70,4 +70,31 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   add_executable(hashes_bench_collisions bench/collisions.cc)
   target_link_libraries(hashes_bench_collisions PRIVATE hashes)
   target_compile_options(hashes_bench_collisions PRIVATE -O2)
+
+  # Benchmark: the families against xxHash and, when installed, absl::Hash:
+  #   cmake -B build -DCMAKE_BUILD_TYPE=Release -DHASHES_BUILD_BENCH=ON
+  # xxHash is fetched at a pinned tag and only this target sees it (SOURCE_SUBDIR names a
+  # directory that does not exist, so FetchContent downloads the sources without building
+  # xxHash's own CMake project). The test checks xxh64 against XXH64 and the candidate hash
+  # in bench/candidate_wordwise8.hh, with no timing.
+  option(HASHES_BUILD_BENCH "Build hashes_compare against xxHash and absl::Hash" OFF)
+  if(HASHES_BUILD_BENCH)
+    FetchContent_Declare(xxhash
+      GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
+      GIT_TAG        v0.8.4
+      SOURCE_SUBDIR  no-cmake-project)
+    FetchContent_MakeAvailable(xxhash)
+    add_executable(hashes_compare bench/compare.cc)
+    target_link_libraries(hashes_compare PRIVATE hashes)
+    target_include_directories(hashes_compare PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/bench "${xxhash_SOURCE_DIR}")
+    target_compile_options(hashes_compare PRIVATE -O3)
+    find_package(absl QUIET)
+    if(absl_FOUND)
+      target_link_libraries(hashes_compare PRIVATE absl::hash)
+      target_compile_definitions(hashes_compare PRIVATE HASHES_BENCH_ABSL)
+    else()
+      message(STATUS "hashes_compare: absl not found, the absl::Hash column is skipped")
+    endif()
+    add_test(NAME hashes_compare COMMAND hashes_compare --check)
+  endif()
 endif()

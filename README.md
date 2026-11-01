@@ -72,13 +72,39 @@ shows `jump_consistent_hash` placing a key as buckets grow.
 - ❌ Passwords, signatures, or anything adversarial: none of these hashes is
   cryptographic.
 
+## ⚡ Performance
+
+String-dispatch keys are short, and there `wordwise` is the cheapest family: on an Apple M4 Pro
+it hashes 4 to 24 bytes in 0.8 to 1.4 ns, ahead of XXH3 (1.3 to 1.8 ns) except at 12 bytes. Above 32 bytes its
+word-at-a-time loop falls behind XXH3, by 1.3x at 64 bytes and 9x at 128 KiB. The self-contained
+`xxh64` runs within 17% of xxHash's `XXH64`. ns per hash, one thread, best of two runs:
+
+| bytes | `xxh64` | `XXH64` | `XXH3` | `absl::Hash` | `wordwise` |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 1.29 | 1.10 | 1.28 | 0.55 | 0.76 |
+| 16 | 1.74 | 1.72 | 1.27 | 0.51 | 1.08 |
+| 64 | 4.69 | 4.68 | 2.62 | 1.29 | 3.38 |
+| 1024 | 41.3 | 40.6 | 21.4 | 7.9 | 147 |
+| 131072 | 5447 | 5458 | 2786 | 2128 | 24946 |
+
+Apple M4 Pro, Apple clang 17 with `-O3`; xxHash v0.8.4 and abseil 20260817. Every row, the
+Intel i9-9980HK numbers and a wide-lane candidate are in
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md). Run it with:
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DHASHES_BUILD_BENCH=ON
+cmake --build build --target hashes_compare && ./build/hashes_compare
+```
+
 ## 📚 Documentation
 
 - [docs/API.md](docs/API.md): the families, the string switch, the literals and
   their quirks, and the xxHash seam.
-- [docs/BENCHMARKS.md](docs/BENCHMARKS.md): which hash wins string dispatch.
+- [docs/BENCHMARKS.md](docs/BENCHMARKS.md): which hash wins string dispatch, and the
+  families against xxHash and absl.
 - [ARCHITECTURE.md](ARCHITECTURE.md): how the families are built.
 - [AGENTS.md](AGENTS.md): repository map, invariants, and traps.
+- [CHANGELOG.md](CHANGELOG.md): dated changes.
 
 ## 🛠️ Building and testing
 

@@ -61,3 +61,6 @@ The header auto-detects this via `__has_include("xxhash.h")` / `<xxhash.h>`:
 Force the choice with `-DSTRING_KIT_HAS_XXHASH=1` or `=0` if you don't want the
 auto-detection.
 
+The self-contained `xxh64` computes one 8-byte lane per step and stays scalar, so it
+runs at XXH64's speed (within a few percent) and not at XXH3's on long keys.
+
