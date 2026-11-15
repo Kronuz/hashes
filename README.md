@@ -118,6 +118,8 @@ cmake --build build --target hashes_compare
 
 ## 📚 Documentation
 
+- [Before the Program Runs](https://kronuz.github.io/blog/compile-time-magic/):
+  the Familiars post on why it exists and how it works.
 - [docs/API.md](docs/API.md): the families, the string switch, the literals and their
   quirks, and the xxHash seam.
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md): which hash wins string dispatch, and the
