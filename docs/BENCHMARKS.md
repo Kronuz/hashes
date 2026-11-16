@@ -13,7 +13,7 @@ ns/op shown):
 | :-- | ---: | ---: |
 | reserved names (cs, ~10 chars) | 9.2 | 6.1 |
 | field-type names (cs, 2..23) | 13.9 | 7.9 |
-| serialiser type names (ci, short) | 19.6 | 15.7 |
+| serializer type names (ci, short) | 19.6 | 15.7 |
 
 Byte-at-a-time FNV walks one character per step; `wordwise` reads eight, so it pulls ahead as
 keys lengthen, and `wordwise_ci` folds case eight bytes at a time (SWAR) where FNV's ci path

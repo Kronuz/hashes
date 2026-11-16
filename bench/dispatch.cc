@@ -93,7 +93,7 @@ int main() {
     row<fnv1ah32, fnv1ah64, wordwise>("reserved field names", RESERVED_CS);
     row<fnv1ah32, fnv1ah64, wordwise>("field-type names (mixed length)", FIELD_TYPES_CS);
     std::printf("\ncase-insensitive (hhl):\n");
-    row<fnv1ah32ci, fnv1ah64ci, wordwise_ci>("serialiser type names", CI_TYPES);
+    row<fnv1ah32ci, fnv1ah64ci, wordwise_ci>("serializer type names", CI_TYPES);
     std::printf("\n(sink %llu)\n", static_cast<unsigned long long>(g_sink));
     return 0;
 }

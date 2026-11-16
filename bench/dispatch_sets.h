@@ -1,6 +1,6 @@
 // Real-world identifier sets for the dispatch benchmark, taken from Xapiand's
 // perfect-hash field/type dispatch: reserved field names (cs), field-type names
-// (cs, mixed length), and serialiser type names (ci). Representative of the strings
+// (cs, mixed length), and serializer type names (ci). Representative of the strings
 // a server actually switches on.
 #pragma once
 #include <string_view>
