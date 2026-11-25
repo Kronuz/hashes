@@ -12,12 +12,12 @@ include(FetchContent)
 FetchContent_Declare(
   static_string
   GIT_REPOSITORY https://github.com/Kronuz/static-string.git
-  GIT_TAG        7eaa8f9d3cfc373ff25d620672a6f6f83b94ce3f
+  GIT_TAG        a99260dd3baa1ed3599b6f02bd75f1e6e2637498
 )
 FetchContent_Declare(
   char_classify
   GIT_REPOSITORY https://github.com/Kronuz/char-classify.git
-  GIT_TAG        25decb57ef5869e4677c42bf9a00ea25b58d35c0
+  GIT_TAG        ee25a41296501dac4ce2b8b402d715f521686f57
 )
 FetchContent_MakeAvailable(static_string char_classify)
 
@@ -59,7 +59,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   # integer-only and does not depend on hashes, so this is a clean one-way bench dependency.
   FetchContent_Declare(constexpr_phf
     GIT_REPOSITORY https://github.com/Kronuz/constexpr-phf.git
-    GIT_TAG        4b669b6c065e209f503e5f3ec839a0634dd13edf)
+    GIT_TAG        58653a7588ada724d2165fd7dcbcda0b8afb9d30)
   FetchContent_MakeAvailable(constexpr_phf)
   add_executable(hashes_bench_dispatch bench/dispatch.cc)
   target_link_libraries(hashes_bench_dispatch PRIVATE hashes constexpr_phf)
